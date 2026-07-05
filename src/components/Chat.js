@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import axios from 'axios';
 import AdminPanel from './AdminPanel';
 import ChartView, { isChartable } from './ChartView';
+import logo from '../assets/aiva-mark.png';
 import html2canvas from 'html2canvas';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -696,11 +697,11 @@ export default function Chat({ user, onLogout, onAuthError }) {
           {/* Brand mark */}
           <div style={S.brand}>
             <div style={S.brandMark}>
-              <span style={S.brandMarkText}>A</span>
+              <img src={logo} alt="AIVA" style={{ width: '66%', height: '66%', objectFit: 'contain' }} />
             </div>
             <div>
-              <div style={S.brandTitle}>AYAAM<span style={S.brandSuffix}>ERP</span></div>
-              <div style={S.brandSub}>AI Assistant</div>
+              <div style={S.brandTitle}>AIVA Assistant</div>
+              <div style={S.brandSub}>AYAAM ERP</div>
             </div>
           </div>
 
@@ -1087,142 +1088,130 @@ export default function Chat({ user, onLogout, onAuthError }) {
    STYLES
 ══════════════════════════════════════════════════════════════════════════════ */
 const S = {
-  /* Shell */
-  root:    { display:'flex', height:'100vh', overflow:'hidden', fontFamily:"'Inter','Plus Jakarta Sans',system-ui,sans-serif", background:'#F0F4F8' },
-  overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:999, backdropFilter:'blur(4px)' },
+  root: { display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', background: '#EAF0F7', fontFamily: "'Inter',system-ui,-apple-system,sans-serif", color: '#07111F' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(7,17,31,0.4)', backdropFilter: 'blur(2px)', zIndex: 999 },
 
   /* ── Sidebar ── */
-  sidebar:      { background:'#080E19', transition:'width 320ms cubic-bezier(0.32,0.72,0,1)', flexShrink:0, overflow:'hidden' },
-  sidebarInner: { width:260, height:'100%', display:'flex', flexDirection:'column', padding:'1.1rem 0.85rem', gap:'0.55rem' },
+  sidebar: { flexShrink: 0, overflow: 'hidden', background: '#F4F7FB', borderRight: '1px solid rgba(21,101,192,0.1)', transition: 'width 320ms cubic-bezier(0.32,0.72,0,1)' },
+  sidebarInner: { width: 260, height: '100%', display: 'flex', flexDirection: 'column', padding: '16px 14px', boxSizing: 'border-box' },
 
-  brand:         { display:'flex', alignItems:'center', gap:'0.75rem', paddingBottom:'0.85rem', borderBottom:'1px solid rgba(255,255,255,0.06)' },
-  brandMark:     { width:36, height:36, borderRadius:9, background:'linear-gradient(135deg,#1565C0,#FF6B2B)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 14px rgba(21,101,192,0.40)' },
-  brandMarkText: { color:'#fff', fontWeight:800, fontSize:'1rem', fontFamily:"'Plus Jakarta Sans',sans-serif" },
-  brandTitle:    { color:'#fff', fontWeight:800, fontSize:'0.95rem', letterSpacing:'0.07em', fontFamily:"'Plus Jakarta Sans',sans-serif" },
-  brandSuffix:   { color:'#2196F3', marginLeft:3, fontWeight:600, fontSize:'0.82rem' },
-  brandSub:      { color:'rgba(255,255,255,0.22)', fontSize:'0.64rem', fontWeight:500, marginTop:2, letterSpacing:'0.02em' },
+  brand: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px 10px' },
+  brandMark: { width: 38, height: 38, flexShrink: 0, borderRadius: 11, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(21,101,192,0.16)' },
+  brandMarkText: { fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 18, color: '#1565C0' },
+  brandTitle: { fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: 14, color: '#0E2138', letterSpacing: '-0.01em', lineHeight: 1.15 },
+  brandSuffix: { color: '#FF6B2B' },
+  brandSub: { fontSize: 10.5, color: 'rgba(14,33,56,0.5)', fontWeight: 500, marginTop: 1 },
 
-  newChatBtn:    { display:'flex', alignItems:'center', gap:'0.5rem', background:'rgba(33,150,243,0.10)', color:'#60A5FA', border:'1px solid rgba(33,150,243,0.20)', borderRadius:9, padding:'0.58rem 0.9rem', fontSize:'0.80rem', fontWeight:600, cursor:'pointer', fontFamily:'inherit', letterSpacing:'0.01em' },
+  newChatBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 6, marginBottom: 14, padding: '11px 14px', background: 'linear-gradient(135deg,#1565C0,#2196F3)', color: '#fff', border: 'none', borderRadius: 11, fontSize: 13.5, fontWeight: 650, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 4px 16px rgba(21,101,192,0.32)', transition: 'transform 120ms, box-shadow 200ms' },
 
-  langRow:       { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 0.2rem' },
-  langLabel:     { fontSize:'0.60rem', color:'rgba(255,255,255,0.22)', fontWeight:700, letterSpacing:'0.10em', textTransform:'uppercase' },
-  langToggle:    { display:'flex', background:'rgba(255,255,255,0.05)', borderRadius:7, padding:2, gap:2 },
-  companyRow:    { display:'flex', flexDirection:'column', gap:'0.4rem', padding:'0.6rem 0.2rem 0', marginTop:'0.5rem', borderTop:'1px solid rgba(255,255,255,0.06)' },
-  companySelect: { width:'100%', padding:'0.5rem 0.6rem', borderRadius:8, background:'rgba(255,255,255,0.07)', color:'#fff', border:'1px solid rgba(255,255,255,0.12)', fontSize:'0.8rem', fontFamily:'inherit', cursor:'pointer', outline:'none' },
-  companyHint:   { fontSize:'0.66rem', color:'#FFB74D', fontWeight:500, letterSpacing:'0.01em', paddingLeft:'0.1rem' },
-  manageUsersBtn:{ width:'100%', marginTop:'0.5rem', padding:'0.55rem 0.6rem', borderRadius:8, background:'rgba(33,150,243,0.14)', color:'#90CAF9', border:'1px solid rgba(33,150,243,0.3)', fontSize:'0.8rem', fontWeight:600, fontFamily:'inherit', cursor:'pointer', transition:'background 150ms' },
-  langBtn:       { padding:'0.24rem 0.55rem', borderRadius:5, border:'none', background:'transparent', color:'rgba(255,255,255,0.30)', fontSize:'0.70rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit' },
-  langBtnOn:     { background:'#1565C0', color:'#fff', boxShadow:'0 2px 10px rgba(21,101,192,0.50)' },
+  langRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px 0', marginBottom: 12 },
+  langLabel: { fontSize: 10, color: 'rgba(14,33,56,0.45)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans',sans-serif" },
+  langToggle: { display: 'flex', background: 'rgba(21,101,192,0.07)', borderRadius: 7, padding: 2, gap: 2 },
+  langBtn: { border: 'none', background: 'transparent', padding: '4px 11px', borderRadius: 5, fontSize: 12, fontWeight: 600, color: 'rgba(14,33,56,0.5)', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 150ms' },
+  langBtnOn: { background: '#fff', color: '#1565C0', boxShadow: '0 1px 4px rgba(21,101,192,0.18)' },
 
-  sectionLabel:  { fontSize:'0.58rem', fontWeight:700, color:'rgba(255,255,255,0.18)', letterSpacing:'0.14em', padding:'0.3rem 0.2rem 0', textTransform:'uppercase' },
+  companyRow: { display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 6px 0', marginBottom: 10, borderTop: '1px solid rgba(21,101,192,0.1)', marginTop: 4 },
+  companySelect: { width: '100%', padding: '9px 10px', fontSize: 13, border: '1px solid rgba(21,101,192,0.2)', borderRadius: 9, background: '#fff', color: '#0E2138', fontFamily: 'inherit', cursor: 'pointer', outline: 'none' },
+  companyHint: { fontSize: 11, color: '#E65100', fontWeight: 500 },
+  manageUsersBtn: { width: '100%', padding: '8px 10px', fontSize: 12.5, fontWeight: 600, color: '#1565C0', background: 'rgba(21,101,192,0.08)', border: '1px solid rgba(21,101,192,0.16)', borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit' },
 
-  histList:        { flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:1, minHeight:0 },
-  histEmpty:       { display:'flex', flexDirection:'column', alignItems:'center', gap:'0.5rem', padding:'2rem 0', color:'rgba(255,255,255,0.18)', fontSize:'0.74rem', fontStyle:'italic' },
-  histGroupLabel:  { fontSize:'0.58rem', color:'rgba(255,255,255,0.22)', fontWeight:700, letterSpacing:'0.08em', padding:'0.5rem 0.4rem 0.2rem', textTransform:'uppercase' },
-  histItem:        { display:'flex', alignItems:'center', gap:'0.45rem', padding:'0.42rem 0.45rem', borderRadius:8, cursor:'pointer', borderLeft:'2px solid transparent' },
-  histIcon:        { flexShrink:0, color:'rgba(255,255,255,0.25)' },
-  histContent:     { flex:1, minWidth:0 },
-  histTitle:       { fontSize:'0.76rem', color:'#C8D8E8', fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' },
-  histDate:        { fontSize:'0.60rem', color:'rgba(255,255,255,0.22)', marginTop:1 },
-  histDel:         { background:'none', border:'none', cursor:'pointer', padding:'0.2rem', borderRadius:5, color:'rgba(255,255,255,0.22)', lineHeight:1, flexShrink:0 },
+  sectionLabel: { fontSize: 10, color: 'rgba(14,33,56,0.4)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '6px 8px 8px', fontFamily: "'Plus Jakarta Sans',sans-serif" },
 
-  userCard:   { display:'flex', alignItems:'center', gap:'0.55rem', background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'0.55rem 0.7rem', border:'1px solid rgba(255,255,255,0.07)' },
-  userAvatar: { width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,#1565C0,#FF6B2B)', color:'#fff', fontWeight:700, fontSize:'0.82rem', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:"'Plus Jakarta Sans',sans-serif" },
-  userInfo:   { flex:1, minWidth:0 },
-  userName:   { color:'#E2EBF4', fontSize:'0.78rem', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' },
-  userRole:   { color:'rgba(255,255,255,0.25)', fontSize:'0.62rem', marginTop:1 },
-  logoutBtn:  { background:'none', border:'none', color:'rgba(255,255,255,0.30)', cursor:'pointer', padding:'0.2rem', lineHeight:1, flexShrink:0 },
+  histList: { flex: '0 1 auto', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, minHeight: 40 },
+  histEmpty: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '24px 12px', color: 'rgba(14,33,56,0.35)', fontSize: 12.5, textAlign: 'center' },
+  histGroupLabel: { fontSize: 10, color: 'rgba(14,33,56,0.4)', fontWeight: 600, padding: '8px 8px 4px', letterSpacing: '0.04em' },
+  histItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 9, cursor: 'pointer', borderLeft: '2px solid transparent', transition: 'background 150ms' },
+  histIcon: { color: 'rgba(14,33,56,0.35)', flexShrink: 0, display: 'flex' },
+  histContent: { flex: 1, minWidth: 0 },
+  histTitle: { fontSize: 13, fontWeight: 500, color: '#24405f', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  histDate: { fontSize: 10.5, color: 'rgba(14,33,56,0.42)', marginTop: 1 },
+  histDel: { flexShrink: 0, background: 'none', border: 'none', color: 'rgba(14,33,56,0.3)', cursor: 'pointer', padding: 3, borderRadius: 6, display: 'flex', opacity: 0, transition: 'opacity 150ms' },
 
-  dwFooter: { fontSize:'0.58rem', color:'rgba(255,255,255,0.10)', textAlign:'center', padding:'0.2rem', fontWeight:500 },
+  userCard: { display: 'flex', alignItems: 'center', gap: 10, padding: 10, marginTop: 8, background: '#fff', border: '1px solid rgba(15,23,42,0.08)', borderRadius: 12 },
+  userAvatar: { width: 34, height: 34, flexShrink: 0, borderRadius: '50%', background: 'linear-gradient(135deg,#FF6B2B,#E65100)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 },
+  userInfo: { flex: 1, minWidth: 0 },
+  userName: { fontSize: 13, fontWeight: 700, color: '#1a2f49', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  userRole: { fontSize: 10.5, color: 'rgba(14,33,56,0.5)', fontWeight: 500 },
+  logoutBtn: { flexShrink: 0, background: 'none', border: 'none', color: 'rgba(14,33,56,0.4)', cursor: 'pointer', padding: 5, borderRadius: 7, display: 'flex' },
+  dwFooter: { fontSize: 9.5, color: 'rgba(14,33,56,0.3)', textAlign: 'center', paddingTop: 10, fontWeight: 500 },
 
   /* ── Main ── */
-  main: { flex:1, display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden', minWidth:0 },
+  main: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#EAF0F7', position: 'relative' },
 
-  /* Header */
-  header: { display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.8rem 1.25rem', background:'#fff', borderBottom:'1px solid #E5E7EB', boxShadow:'0 1px 3px rgba(0,0,0,0.05)', flexShrink:0 },
-  menuBtn: { background:'none', border:'none', cursor:'pointer', color:'#374151', padding:'0.28rem', borderRadius:7, lineHeight:1, display:'flex', alignItems:'center', justifyContent:'center' },
-  headerCenter: { flex:1, display:'flex', alignItems:'center', gap:'0.55rem' },
-  headerTitle:  { fontWeight:650, fontSize:'0.92rem', color:'#07111F', letterSpacing:'-0.01em', fontFamily:"'Plus Jakarta Sans',sans-serif" },
-  headerRight:  { display:'flex', alignItems:'center', gap:'0.45rem' },
-  langBadge:    { background:'#F3F4F6', color:'#374151', padding:'0.2rem 0.6rem', borderRadius:99, fontSize:'0.68rem', fontWeight:600 },
-  roleBadge:    { background:'#EFF6FF', color:'#1565C0', padding:'0.2rem 0.7rem', borderRadius:99, fontSize:'0.68rem', fontWeight:700, border:'1px solid #BFDBFE' },
+  header: { display: 'flex', alignItems: 'center', gap: 12, padding: '0 20px', height: 60, flexShrink: 0, background: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(18px)', borderBottom: '1px solid #E5E7EB', zIndex: 5 },
+  menuBtn: { background: 'none', border: 'none', color: '#374151', cursor: 'pointer', padding: 6, borderRadius: 8, display: 'flex', flexShrink: 0 },
+  headerCenter: { display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
+  headerTitle: { fontSize: 14.5, fontWeight: 700, color: '#07111F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: "'Plus Jakarta Sans',sans-serif" },
+  headerRight: { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 },
+  langBadge: { fontSize: 11.5, fontWeight: 600, color: '#374151', background: '#F3F4F6', padding: '4px 10px', borderRadius: 99 },
+  roleBadge: { fontSize: 11.5, fontWeight: 600, color: '#1565C0', background: 'rgba(21,101,192,0.1)', padding: '4px 10px', borderRadius: 99, border: '1px solid rgba(21,101,192,0.2)' },
 
-  /* Messages */
-  msgArea: { flex:1, overflow:'auto', padding:'1.1rem 1.25rem', display:'flex', flexDirection:'column' },
+  msgArea: { flex: 1, overflowY: 'auto', position: 'relative' },
 
-  /* Dashboard */
-  dashboard:    { flex:1, paddingBottom:'1rem' },
-  dashWelcome:  { marginBottom:'1.6rem' },
-  dashGreeting: { fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:'1.55rem', fontWeight:800, color:'#07111F', letterSpacing:'-0.03em', marginBottom:'0.3rem' },
-  dashSub:      { fontSize:'0.875rem', color:'#6B7280', fontWeight:400 },
-  dashGrid:     { display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(210px, 1fr))', gap:'0.8rem' },
+  /* ── Dashboard (empty state) ── */
+  dashboard: { maxWidth: 1000, margin: '0 auto', padding: '32px 24px 40px' },
+  dashWelcome: { marginBottom: 28 },
+  dashGreeting: { fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 26, fontWeight: 800, color: '#07111F', letterSpacing: '-0.02em' },
+  dashSub: { fontSize: 14.5, color: '#6B7280', marginTop: 5 },
+  dashGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 16 },
+  dashCard: { background: '#fff', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.04)', transition: 'transform 180ms, box-shadow 180ms' },
+  cardBand: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px' },
+  cardBandIcon: { flexShrink: 0, display: 'flex', alignItems: 'center' },
+  cardBandLabel: { color: '#fff', fontWeight: 700, fontSize: 11.5, letterSpacing: '0.08em', textTransform: 'uppercase' },
+  cardBody: { padding: '8px 10px 12px' },
+  cardQuery: { display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '7px 10px', background: 'transparent', border: 'none', borderLeft: '3px solid', borderRadius: 7, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', transition: 'background 140ms' },
+  cardQueryDot: { width: 5, height: 5, borderRadius: '50%', flexShrink: 0 },
+  cardQueryLabel: { flex: 1, fontSize: 13, fontWeight: 500, color: '#374151' },
+  cardQueryArrow: { color: '#CBD5E1', display: 'flex', flexShrink: 0 },
+  cardHint: { fontSize: 10.5, fontStyle: 'italic', fontWeight: 500, padding: '4px 10px 0', opacity: 0.7, letterSpacing: '0.01em' },
 
-  /* Card */
-  dashCard:      { background:'#fff', borderRadius:14, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04)', border:'none' },
-  cardBand:      { display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.6rem 0.875rem' },
-  cardBandIcon:  { flexShrink:0, display:'flex', alignItems:'center' },
-  cardBandLabel: { color:'#fff', fontWeight:700, fontSize:'0.72rem', letterSpacing:'0.08em', textTransform:'uppercase', fontFamily:"'Inter',sans-serif" },
-  cardBody:      { padding:'0.45rem 0.6rem 0.6rem', display:'flex', flexDirection:'column', gap:'0.2rem' },
-  cardQuery:     { display:'flex', alignItems:'center', gap:'0.45rem', padding:'0.42rem 0.6rem', background:'transparent', border:'none', borderLeft:'3px solid transparent', borderRadius:7, cursor:'pointer', textAlign:'left', width:'100%', fontFamily:'inherit' },
-  cardQueryDot:  { width:5, height:5, borderRadius:'50%', flexShrink:0 },
-  cardQueryLabel:{ flex:1, fontSize:'0.78rem', color:'#07111F', fontWeight:500, letterSpacing:'-0.01em' },
-  cardQueryArrow:{ color:'#D1D5DB', flexShrink:0 },
-  cardHint:      { fontSize:'0.65rem', fontStyle:'italic', fontWeight:500, padding:'0.25rem 0.6rem 0', opacity:0.7, letterSpacing:'0.01em' },
+  /* ── Messages ── */
+  msgList: { maxWidth: 860, margin: '0 auto', padding: '24px 20px 32px', display: 'flex', flexDirection: 'column', gap: 18 },
+  msgRowLeft: { display: 'flex', gap: 10, alignItems: 'flex-start', maxWidth: '100%' },
+  msgRowRight: { display: 'flex', gap: 10, alignItems: 'flex-start', flexDirection: 'row-reverse', maxWidth: '100%' },
+  avatarBot: { width: 30, height: 30, flexShrink: 0, borderRadius: '50%', background: 'linear-gradient(135deg,#1565C0,#2196F3)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10.5, fontFamily: "'Plus Jakarta Sans',sans-serif" },
+  avatarUser: { width: 30, height: 30, flexShrink: 0, borderRadius: '50%', background: 'linear-gradient(135deg,#FF6B2B,#E65100)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 },
+  bubble: { maxWidth: 'min(680px,calc(100% - 44px))', borderRadius: 16, padding: '13px 16px', fontSize: 14.5, lineHeight: 1.6, position: 'relative', wordBreak: 'break-word' },
+  bubbleBot: { background: '#fff', color: '#1F2937', border: '1px solid rgba(15,23,42,0.07)', boxShadow: '0 2px 10px rgba(7,17,31,0.05)', borderTopLeftRadius: 5 },
+  bubbleUser: { background: 'linear-gradient(135deg,#1565C0,#2196F3)', color: '#fff', borderTopRightRadius: 5 },
+  bubbleErr: { background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' },
+  userText: { whiteSpace: 'pre-wrap' },
+  userFooter: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 8 },
 
-  /* Msgs list */
-  msgList:    { display:'flex', flexDirection:'column', gap:'1rem' },
-  msgRowLeft: { display:'flex', alignItems:'flex-end', gap:'0.5rem', justifyContent:'flex-start' },
-  msgRowRight:{ display:'flex', alignItems:'flex-end', gap:'0.5rem', justifyContent:'flex-end' },
+  suggestTitle: { display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 600, color: '#92400E', marginBottom: 10 },
+  suggestList: { display: 'flex', flexDirection: 'column', gap: 7 },
+  suggestChip: { textAlign: 'left', padding: '9px 13px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 9, fontSize: 13.5, color: '#1565C0', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' },
 
-  avatarBot:  { width:28, height:28, borderRadius:'50%', flexShrink:0, background:'linear-gradient(135deg,#1565C0,#2196F3)', color:'#fff', fontSize:'0.60rem', fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(21,101,192,0.32)', letterSpacing:'-0.02em', fontFamily:"'Plus Jakarta Sans',sans-serif" },
-  avatarUser: { width:28, height:28, borderRadius:'50%', flexShrink:0, background:'linear-gradient(135deg,#FF6B2B,#E65100)', color:'#fff', fontSize:'0.75rem', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'Plus Jakarta Sans',sans-serif" },
+  exportCard: { border: '1px solid #BFDBFE' },
+  exportHead: { display: 'flex', alignItems: 'center', gap: 8, color: '#1565C0', fontWeight: 700, marginBottom: 8 },
+  exportHeadTitle: { fontSize: 14 },
+  exportBody: { fontSize: 13.5, color: '#475569', lineHeight: 1.55, marginBottom: 10 },
+  exportMeta: { fontSize: 11.5, color: '#94A3B8', marginBottom: 12, fontFamily: 'monospace' },
+  exportBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 16px', background: 'linear-gradient(135deg,#1565C0,#2196F3)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13.5, fontWeight: 650, fontFamily: 'inherit', cursor: 'pointer' },
+  miniSpinner: { width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'ay-spin 0.65s linear infinite' },
 
-  bubble:     { maxWidth:'min(74%, 600px)', borderRadius:16, padding:'0.75rem 0.95rem', boxShadow:'0 1px 4px rgba(0,0,0,0.07)' },
-  bubbleUser: { background:'linear-gradient(135deg,#1565C0,#2196F3)', color:'#fff', borderBottomRightRadius:4, boxShadow:'0 4px 16px rgba(21,101,192,0.28)' },
-  bubbleBot:  { background:'#fff', color:'#07111F', border:'1px solid #E5E7EB', borderBottomLeftRadius:4 },
-  bubbleErr:  { background:'#FEF2F2', border:'1px solid #FECACA' },
+  actBar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 12, flexWrap: 'wrap' },
+  actGroup: { display: 'flex', gap: 6, flexWrap: 'wrap' },
+  actBtnDark: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', background: '#F1F5F9', color: '#475569', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 140ms' },
+  actBtnLight: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', background: 'rgba(255,255,255,0.18)', color: '#fff', border: '1px solid rgba(255,255,255,0.28)', borderRadius: 7, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+  actBtnActive: { background: '#DBEAFE', color: '#1565C0', border: '1px solid #BFDBFE' },
+  actBtnOrange: { background: '#FFF7ED', color: '#C2410C', border: '1px solid #FED7AA' },
+  actBtnGreen: { background: '#F0FDF4', color: '#166534', border: '1px solid #BBF7D0' },
+  actBtnBlue: { background: '#EFF6FF', color: '#1565C0', border: '1px solid #BFDBFE' },
+  actBtnDisabled: { opacity: 0.4, cursor: 'not-allowed' },
+  actBtnPurple: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', background: '#FAF5FF', color: '#7E22CE', border: '1px solid #E9D5FF', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+  chartNotice: { marginTop: 10, fontSize: 12.5, color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 12px' },
 
-  userText:   { fontSize:'0.88rem', lineHeight:1.6, display:'block', letterSpacing:'-0.005em' },
-  userFooter: { display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:8, gap:8 },
-  ts:         { fontSize:'0.63rem', color:'#9CA3AF', flexShrink:0, fontVariantNumeric:'tabular-nums' },
+  ts: { fontSize: 10.5, color: '#94A3B8', flexShrink: 0 },
 
-  actBar:    { display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'0.5rem', paddingTop:'0.4rem', borderTop:'1px solid #F3F4F6', gap:'0.4rem' },
-  actGroup:  { display:'flex', gap:3, flexWrap:'wrap' },
+  typingBubble: { display: 'flex', alignItems: 'center', gap: 5 },
+  typingLabel: { fontSize: 12.5, color: '#94A3B8', marginLeft: 6, fontStyle: 'italic' },
 
-  /* Action button variants */
-  actBtnDark:   { background:'#F9FAFB', color:'#4B5563', border:'1px solid #E5E7EB' },
-  actBtnLight:  { background:'rgba(255,255,255,0.14)', color:'rgba(255,255,255,0.80)', border:'1px solid rgba(255,255,255,0.14)' },
-  actBtnActive: { background:'#EFF6FF', color:'#1565C0', border:'1px solid #BFDBFE' },
-  actBtnOrange: { background:'#FFF7ED', color:'#C2410C', border:'1px solid #FED7AA' },
-  actBtnGreen:  { background:'#F0FDF4', color:'#166534', border:'1px solid #BBF7D0' },
-  actBtnBlue:   { background:'#EFF6FF', color:'#1565C0', border:'1px solid #BFDBFE' },
-  actBtnDisabled: { opacity:0.4, cursor:'not-allowed' },
-  chartNotice:  { marginTop:'0.4rem', fontSize:'0.78rem', color:'#92400E', background:'#FEF3C7', border:'1px solid #FDE68A', borderRadius:8, padding:'0.5rem 0.75rem', display:'inline-block' },
-  actBtnPurple: { background:'#FAF5FF', color:'#7E22CE', border:'1px solid #E9D5FF' },
-
-  /* Suggest */
-  suggestTitle: { display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'0.82rem', fontWeight:600, color:'#374151', marginBottom:'0.65rem', lineHeight:1.45 },
-  suggestList:  { display:'flex', flexDirection:'column', gap:'0.4rem' },
-  suggestChip:  { background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:8, padding:'0.48rem 0.75rem', fontSize:'0.79rem', fontWeight:500, color:'#1565C0', cursor:'pointer', textAlign:'left', fontFamily:'inherit', lineHeight:1.4 },
-
-  /* Typing */
-  typingBubble: { display:'flex', alignItems:'center', gap:'0.55rem', padding:'0.6rem 0.95rem' },
-  typingLabel:  { fontSize:'0.76rem', color:'#9CA3AF', fontStyle:'italic', letterSpacing:'0.01em' },
-
-  /* Export */
-  exportCard:     { maxWidth:430, padding:'1rem 1.1rem' },
-  exportHead:     { display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.55rem' },
-  exportHeadTitle:{ fontWeight:700, fontSize:'0.88rem', color:'#1565C0', fontFamily:"'Plus Jakarta Sans',sans-serif" },
-  exportBody:     { fontSize:'0.82rem', color:'#374151', marginBottom:'0.65rem', lineHeight:1.6 },
-  exportMeta:     { fontSize:'0.70rem', color:'#6B7280', marginBottom:'0.6rem', background:'#F9FAFB', borderRadius:6, padding:'0.28rem 0.6rem', fontFamily:"'JetBrains Mono',monospace" },
-  exportBtn:      { display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', width:'100%', padding:'0.58rem 1rem', background:'linear-gradient(135deg,#1565C0,#2196F3)', color:'#fff', border:'none', borderRadius:9, fontWeight:650, fontSize:'0.82rem', fontFamily:'inherit', cursor:'pointer', boxShadow:'0 4px 16px rgba(21,101,192,0.32)' },
-  miniSpinner:    { width:13, height:13, border:'2px solid rgba(255,255,255,0.30)', borderTopColor:'#fff', borderRadius:'50%', display:'inline-block', animation:'spin 0.65s linear infinite', flexShrink:0 },
-
-  /* Input */
-  inputArea:  { padding:'0.8rem 1.25rem 1rem', background:'#fff', borderTop:'1px solid #E5E7EB', flexShrink:0 },
-  inputWrap:  { display:'flex', alignItems:'flex-end', gap:'0.55rem', background:'#F9FAFB', borderRadius:13, border:'1.5px solid #E5E7EB', padding:'0.45rem 0.45rem 0.45rem 0.55rem' },
-  micBtn:     { width:36, height:36, borderRadius:9, flexShrink:0, color:'#fff', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' },
-  textarea:   { flex:1, resize:'none', border:'none', background:'transparent', fontSize:'0.875rem', fontFamily:'inherit', color:'#07111F', outline:'none', lineHeight:1.6, maxHeight:120, overflow:'auto', padding:'0.1rem 0', letterSpacing:'-0.005em' },
-  sendBtn:    { width:36, height:36, borderRadius:9, flexShrink:0, background:'linear-gradient(135deg,#1565C0,#2196F3)', color:'#fff', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(21,101,192,0.30)' },
-  inputHint:  { fontSize:'0.63rem', color:'#9CA3AF', textAlign:'center', marginTop:'0.4rem', letterSpacing:'0.01em' },
+  /* ── Input ── */
+  inputArea: { flexShrink: 0, padding: '14px 20px 18px', background: 'transparent' },
+  inputWrap: { display: 'flex', alignItems: 'flex-end', gap: 9, maxWidth: 860, margin: '0 auto', background: 'linear-gradient(180deg,#FFFFFF,#F2F7FD)', border: '1px solid rgba(21,101,192,0.18)', borderRadius: 16, padding: 8, boxShadow: '0 24px 60px rgba(21,101,192,0.15),0 4px 14px rgba(7,17,31,0.06)' },
+  micBtn: { width: 38, height: 38, flexShrink: 0, borderRadius: 11, border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  textarea: { flex: 1, border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontSize: 14.5, fontFamily: 'inherit', color: '#0B1A2E', padding: '9px 4px', maxHeight: 140, lineHeight: 1.5 },
+  sendBtn: { width: 38, height: 38, flexShrink: 0, borderRadius: 11, border: 'none', background: 'linear-gradient(135deg,#1565C0,#2196F3)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 160ms' },
+  inputHint: { textAlign: 'center', fontSize: 11, color: 'rgba(11,26,46,0.4)', marginTop: 8 },
 };

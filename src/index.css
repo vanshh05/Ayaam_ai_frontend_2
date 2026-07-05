@@ -344,8 +344,8 @@ body {
 }
 @media (hover: hover) and (pointer: fine) {
   .hist-item:hover {
-    background:   rgba(255,255,255,0.07) !important;
-    border-color: rgba(33,150,243,0.35) !important;
+    background:   rgba(21,101,192,0.08) !important;
+    border-color: rgba(21,101,192,0.35) !important;
     transform:    translateX(3px);
   }
 }
