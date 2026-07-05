@@ -428,6 +428,7 @@ export default function Chat({ user, onLogout }) {
     try { return localStorage.getItem('ayaam_theme') || 'dark'; } catch { return 'dark'; }
   });
   const [quickOpen, setQuickOpen] = useState(false); // composer quick-queries panel
+  const quickAutoShown = useRef(false); // true once the panel has auto-opened for this new conversation
   const isEmpty = messages.length === 0;
   const heroPlaceholder = useHeroTypewriter(isEmpty && !input);
   const toggleTheme = () => {
@@ -605,11 +606,15 @@ export default function Chat({ user, onLogout }) {
   const newChat = () => {
     setMessages([]); setHistory([]); setInput(''); setActiveChatId(null);
     setTranslations({}); stopSpeaking();
+    quickAutoShown.current = false; // let quick-queries auto-open once on the new conversation
+    setQuickOpen(false);
     if (isMobile) setSidebarOpen(false);
   };
   const loadChat = (chat) => {
     setMessages(chat.messages); setHistory(chat.history || []);
     setActiveChatId(chat.id); setTranslations({}); stopSpeaking();
+    quickAutoShown.current = true; // don't auto-open quick-queries when opening an existing chat
+    setQuickOpen(false);
     if (isMobile) setSidebarOpen(false);
   };
   const deleteChat = (e, chatId) => {
@@ -1035,7 +1040,7 @@ export default function Chat({ user, onLogout }) {
                   <textarea ref={inputRef} style={S.heroTextarea}
                     placeholder={input ? '' : (speechLang === 'hi-IN' ? 'बिक्री, स्टॉक के बारे में पूछें…' : (heroPlaceholder || 'Ask about sales, stock, party status…'))}
                     value={input} onChange={e => setInput(e.target.value)}
-                    onKeyDown={handleKey} onFocus={() => { if (isEmpty) setQuickOpen(true); }}
+                    onKeyDown={handleKey} onFocus={() => { if (isEmpty && !quickAutoShown.current) { quickAutoShown.current = true; setQuickOpen(true); } }}
                     rows={1} disabled={loading} />
                   <div style={S.heroBoxFooter}>
                     <button className="icon-btn" style={S.heroPlusBtn}
