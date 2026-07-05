@@ -1429,7 +1429,7 @@ const S = {
 
   bubble:     { maxWidth:'min(74%, 600px)', borderRadius:16, padding:'0.75rem 0.95rem', boxShadow:'0 1px 4px rgba(0,0,0,0.07)' },
   bubbleUser: { background:'linear-gradient(135deg,#1565C0,#2196F3)', color:'#fff', borderBottomRightRadius:4, boxShadow:'0 4px 16px rgba(21,101,192,0.28)' },
-  bubbleBot:  { background:'#fff', color:'#07111F', border:'1px solid #E5E7EB', borderBottomLeftRadius:4 },
+  bubbleBot:  { background:'#fff', color:'#07111F', border:'1px solid #E5E7EB', borderBottomLeftRadius:4, maxWidth:'min(88%, 820px)', overflow:'hidden' },
   bubbleErr:  { background:'#FEF2F2', border:'1px solid #FECACA' },
 
   userText:   { fontSize:'0.88rem', lineHeight:1.6, display:'block', letterSpacing:'-0.005em' },
@@ -1470,8 +1470,8 @@ const S = {
 
   /* Input */
   inputArea:  { padding:'0.8rem 1.25rem 1rem', background:'transparent', flexShrink:0, position:'relative', zIndex:3 },
-  followUpRow: { display:'flex', gap:'0.4rem', overflowX:'auto', paddingBottom:'0.55rem', marginBottom:'0.15rem' },
-  followUpChip: { flexShrink:0, whiteSpace:'nowrap', fontSize:'0.7rem', fontWeight:500, color:'#6B7280', background:'#F9FAFB', border:'1px solid #EEF2F7', borderRadius:99, padding:'0.32rem 0.7rem', cursor:'pointer', fontFamily:'inherit' },
+  followUpRow: { display:'flex', gap:'0.4rem', overflowX:'auto', paddingBottom:'0.55rem', marginBottom:'0.15rem', maxWidth:860, marginLeft:'auto', marginRight:'auto', width:'100%' },
+  followUpChip: { flexShrink:0, whiteSpace:'nowrap', fontSize:'0.7rem', fontWeight:500, color:'var(--glass-txt)', background:'var(--glass-bg)', border:'1px solid var(--glass-border)', borderRadius:99, padding:'0.32rem 0.7rem', cursor:'pointer', fontFamily:'inherit', backdropFilter:'blur(8px)' },
   inputWrap:  { display:'flex', alignItems:'flex-end', gap:'0.55rem', background:'var(--in-bg)', borderRadius:13, border:'1px solid var(--in-border)', padding:'0.45rem 0.45rem 0.45rem 0.55rem', boxShadow:'var(--in-box-shadow)', maxWidth:860, margin:'0 auto' },
   micBtn:     { width:36, height:36, borderRadius:9, flexShrink:0, color:'#fff', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' },
   textarea:   { flex:1, resize:'none', border:'none', background:'transparent', fontSize:'0.875rem', fontFamily:'inherit', color:'var(--in-txt)', outline:'none', lineHeight:1.6, maxHeight:120, overflow:'auto', padding:'0.1rem 0', letterSpacing:'-0.005em' },
