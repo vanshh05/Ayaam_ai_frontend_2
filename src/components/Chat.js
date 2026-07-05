@@ -241,6 +241,7 @@ const DASHBOARD_CARDS = [
 /* Flat label → full prompt text, for follow-up chips */
 const QUERY_BY_LABEL = {};
 DASHBOARD_CARDS.forEach(card => card.queries.forEach(q => { QUERY_BY_LABEL[q.label] = q.text; }));
+const QUICK_COUNT = DASHBOARD_CARDS.reduce((n, c) => n + c.queries.length, 0);
 
 /* Contextual follow-up suggestions keyed by the query label just asked */
 const RELATED_QUERIES = {
@@ -371,6 +372,35 @@ function loadSavedChats(){ try{ const r=localStorage.getItem(STORAGE_KEY); retur
 function saveChats(chats){ try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(chats)); }catch{} }
 function generateChatTitle(msg){ const c=msg.replace(/\[LANG:[A-Z]+\]\s*/g,'').trim(); return c.length>40?c.slice(0,40)+'…':c; }
 
+/* Rotating typewriter for the empty-state chat box placeholder */
+const HERO_EXAMPLES = [
+  "Show me the debtors list",
+  "What's today's sales?",
+  "Full stock details as PDF",
+  "Bank balance summary",
+  "Total receivable as on today",
+  "This month's dispatch summary",
+];
+function useHeroTypewriter(active) {
+  const [text, setText] = React.useState('');
+  React.useEffect(() => {
+    if (!active) { setText(''); return; }
+    let ei = 0, ci = 0, dir = 1, hold = 0, timer;
+    const tick = () => {
+      const full = HERO_EXAMPLES[ei];
+      if (hold > 0) { hold--; timer = setTimeout(tick, 60); return; }
+      ci += dir;
+      if (ci >= full.length) { ci = full.length; dir = -1; hold = 28; }
+      else if (ci <= 0) { ci = 0; dir = 1; ei = (ei + 1) % HERO_EXAMPLES.length; hold = 3; }
+      setText(full.slice(0, ci));
+      timer = setTimeout(tick, dir > 0 ? 62 : 30);
+    };
+    timer = setTimeout(tick, 600);
+    return () => clearTimeout(timer);
+  }, [active]);
+  return text;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════════════════════════ */
@@ -398,6 +428,8 @@ export default function Chat({ user, onLogout }) {
     try { return localStorage.getItem('ayaam_theme') || 'dark'; } catch { return 'dark'; }
   });
   const [quickOpen, setQuickOpen] = useState(false); // composer quick-queries panel
+  const isEmpty = messages.length === 0;
+  const heroPlaceholder = useHeroTypewriter(isEmpty && !input);
   const toggleTheme = () => {
     setTheme(t => {
       const next = t === 'dark' ? 'light' : 'dark';
@@ -735,6 +767,41 @@ export default function Chat({ user, onLogout }) {
   const groups  = groupedChats();
 
   const hr = new Date().getHours();
+  const firstName = (user.name || '').split(' ')[0] || 'there';
+  // Time-based greeting bucket → a rotating set of headlines, one picked per mount
+  const heroHeadline = React.useMemo(() => {
+    let pool;
+    if (hr < 12) {
+      pool = [
+        `Good morning, ${firstName}`,
+        `Morning, ${firstName} — ready to dive in?`,
+        `Rise and shine, ${firstName}`,
+        `A fresh start, ${firstName}`,
+      ];
+    } else if (hr < 17) {
+      pool = [
+        `Good afternoon, ${firstName}`,
+        `Afternoon, ${firstName} — what's on your mind?`,
+        `Ready to explore, ${firstName}?`,
+        `How's business, ${firstName}?`,
+      ];
+    } else if (hr < 21) {
+      pool = [
+        `Good evening, ${firstName}`,
+        `Evening, ${firstName} — let's wrap up the day`,
+        `Winding down, ${firstName}?`,
+        `How did today go, ${firstName}?`,
+      ];
+    } else {
+      pool = [
+        `Working late, ${firstName}?`,
+        `Burning the midnight oil, ${firstName}?`,
+        `Good evening, ${firstName}`,
+        `Still going, ${firstName}?`,
+      ];
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
+  }, [hr, firstName]);
   const greeting = hr < 12 ? 'Good Morning' : hr < 17 ? 'Good Afternoon' : 'Good Evening';
 
   /* ── Render ─────────────────────────────────────────────────────────────── */
@@ -952,41 +1019,52 @@ export default function Chat({ user, onLogout }) {
         <div style={S.msgArea}>
           {messages.length === 0 ? (
 
-            /* ── Dashboard ── */
-            <div style={S.dashboard}>
-              <div style={S.dashWelcome} className="anim-fadeUp">
-                <div style={S.dashGreeting}>{greeting}, {user.name.split(' ')[0]}</div>
-                <div style={S.dashSub}>What would you like to explore today?</div>
-              </div>
+            /* ── Centered hero empty-state ── */
+            <div style={S.hero}>
+              <div style={S.heroInner} className="anim-fadeUp">
+                <div style={S.connPill}>
+                  <span className="status-dot" />
+                  <span>Live ERP data · {isAdmin ? (selectedCompany || 'Select a company') : (user.company_name || 'connected')}{isAdmin && selectedCompany ? ' connected' : (!isAdmin ? ' connected' : '')}</span>
+                </div>
 
-              <div style={S.dashGrid} className="stagger">
-                {DASHBOARD_CARDS.map((card, idx) => (
-                  <div key={card.id} className="dash-card anim-fadeUp"
-                    style={{ ...S.dashCard, animationDelay: `${idx * 55}ms` }}>
+                <h1 style={S.heroH1}>{heroHeadline}</h1>
+                <p style={S.heroSub}>Ask anything about your business — or pick a quick query below.</p>
 
-                    {/* Colored top band */}
-                    <div style={{ ...S.cardBand, background: card.color }}>
-                      <span style={S.cardBandIcon}><card.Icon color="#fff" /></span>
-                      <span style={S.cardBandLabel}>{card.label}</span>
-                    </div>
-
-                    {/* Queries */}
-                    <div style={S.cardBody}>
-                      {card.queries.map((q, qi) => (
-                        <button key={qi} className="dash-query-btn"
-                          style={{ ...S.cardQuery, borderLeftColor: card.color }}
-                          onClick={() => sendMessage(q.text, q.label)}>
-                          <span style={{ ...S.cardQueryDot, background: card.color }} />
-                          <span style={S.cardQueryLabel}>{q.label}</span>
-                          <span style={S.cardQueryArrow}><Ic.ArrowRight /></span>
-                        </button>
-                      ))}
-                      <div style={{ ...S.cardHint, color: card.color }}>
-                        Ask anything about {card.label.toLowerCase()}
-                      </div>
-                    </div>
+                {/* Centered chat box */}
+                <div style={S.heroBox} className="hero-box">
+                  <textarea ref={inputRef} style={S.heroTextarea}
+                    placeholder={input ? '' : (speechLang === 'hi-IN' ? 'बिक्री, स्टॉक के बारे में पूछें…' : (heroPlaceholder || 'Ask about sales, stock, party status…'))}
+                    value={input} onChange={e => setInput(e.target.value)}
+                    onKeyDown={handleKey} onFocus={() => { if (isEmpty) setQuickOpen(true); }}
+                    rows={1} disabled={loading} />
+                  <div style={S.heroBoxFooter}>
+                    <button className="icon-btn" style={S.heroPlusBtn}
+                      onClick={() => setQuickOpen(o => !o)} title="Quick queries">
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3.5v11M3.5 9h11" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
+                    </button>
+                    <div style={{ flex: 1 }} />
+                    <span style={S.heroLangPill}>English · हिंदी</span>
+                    <button className={`icon-btn${listening ? ' mic-pulse' : ''}`}
+                      style={{ ...S.heroMicBtn, background: listening ? 'linear-gradient(135deg,#B91C1C,#DC2626)' : 'var(--in-icon-bg)', color: listening ? '#fff' : 'var(--in-icon-txt)' }}
+                      onClick={startListening} title="Voice input">
+                      {listening ? <Ic.MicOff /> : <Ic.Mic />}
+                    </button>
+                    <button className="icon-btn" style={{ ...S.heroSendBtn, opacity: (!input.trim() || loading) ? 0.4 : 1 }}
+                      onClick={() => sendMessage()} disabled={!input.trim() || loading} title="Send">
+                      <Ic.Send />
+                    </button>
                   </div>
-                ))}
+                </div>
+
+                {/* Quick queries pill */}
+                <button style={S.quickPill} className="quick-pill" onClick={() => setQuickOpen(o => !o)}>
+                  <span style={S.quickPillIcon}>⚡</span>
+                  <span style={S.quickPillLabel}>Quick queries</span>
+                  <span style={S.quickPillCount}>{QUICK_COUNT}</span>
+                  <span style={{ transform: quickOpen ? 'rotate(180deg)' : 'none', transition: 'transform 200ms', display: 'flex' }}>
+                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M4 8.5l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </span>
+                </button>
               </div>
             </div>
 
@@ -1165,41 +1243,10 @@ export default function Chat({ user, onLogout }) {
           )}
         </div>
 
-        {/* ── Input ── */}
+        {/* ── Input (only during a conversation; empty state uses the hero box) ── */}
+        {messages.length > 0 && (
         <div style={S.inputArea}>
-          {quickOpen && (
-            <div style={S.quickPanel} className="anim-fadeUp">
-              <div style={S.quickPanelHead}>
-                <div>
-                  <div style={S.quickPanelTitle}>Quick queries</div>
-                  <div style={S.quickPanelSub}>Pick a ready-made question — it runs instantly</div>
-                </div>
-                <button style={S.pdfCloseBtn} onClick={() => setQuickOpen(false)}><Ic.Close /></button>
-              </div>
-              <div style={S.quickPanelGrid}>
-                {DASHBOARD_CARDS.map(card => (
-                  <div key={card.id} style={S.quickCard}>
-                    <div style={{ ...S.cardBand, background: card.color, borderRadius: '10px 10px 0 0' }}>
-                      <span style={S.cardBandIcon}><card.Icon color="#fff" /></span>
-                      <span style={S.cardBandLabel}>{card.label}</span>
-                    </div>
-                    <div style={{ padding: '6px 8px 8px' }}>
-                      {card.queries.map((q, qi) => (
-                        <button key={qi} className="dash-query-btn"
-                          style={{ ...S.cardQuery, borderLeftColor: card.color }}
-                          onClick={() => { sendMessage(q.text, q.label); setQuickOpen(false); }}>
-                          <span style={{ ...S.cardQueryDot, background: card.color }} />
-                          <span style={S.cardQueryLabel}>{q.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {messages.length > 0 && (
-            <div style={S.followUpRow}>
+          <div style={S.followUpRow}>
               {(RELATED_QUERIES[messages.filter(m => m.role === 'user').slice(-1)[0]?.text] || DEFAULT_FOLLOW_UPS)
                 .map(label => (
                   <button key={label} className="follow-up-chip" style={S.followUpChip}
@@ -1208,7 +1255,6 @@ export default function Chat({ user, onLogout }) {
                   </button>
                 ))}
             </div>
-          )}
           <div style={S.inputWrap} className="input-wrap">
             <button className="icon-btn" style={S.quickBtn}
               onClick={() => setQuickOpen(o => !o)} title="Quick queries">
@@ -1236,6 +1282,48 @@ export default function Chat({ user, onLogout }) {
             {listening ? '🎤 Listening… speak now' : 'Enter to send · Shift+Enter for new line'}
           </div>
         </div>
+        )}
+
+        {/* ── Quick-queries centered modal ── */}
+        {quickOpen && (
+          <div style={S.quickOverlay}>
+            <div style={S.quickBackdrop} onClick={() => setQuickOpen(false)} />
+            <div style={S.quickModal} className="anim-fadeUp">
+              <div style={S.quickModalHead}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={S.quickModalIcon}>⚡</span>
+                  <div>
+                    <div style={S.quickModalTitle}>Quick queries</div>
+                    <div style={S.quickModalSub}>Pick a ready-made question — it runs instantly</div>
+                  </div>
+                </div>
+                <button style={S.pdfCloseBtn} onClick={() => setQuickOpen(false)}><Ic.Close /></button>
+              </div>
+              <div style={S.quickModalGrid}>
+                {DASHBOARD_CARDS.map(card => (
+                  <div key={card.id} style={S.quickCard}>
+                    <div style={{ ...S.cardBand, background: card.color, borderRadius: '11px 11px 0 0' }}>
+                      <span style={S.cardBandIcon}><card.Icon color="#fff" /></span>
+                      <span style={S.cardBandLabel}>{card.label}</span>
+                    </div>
+                    <div style={{ padding: '6px 8px 10px' }}>
+                      {card.queries.map((q, qi) => (
+                        <button key={qi} className="dash-query-btn"
+                          style={{ ...S.cardQuery, borderLeftColor: card.color }}
+                          onClick={() => { sendMessage(q.text, q.label); setQuickOpen(false); }}>
+                          <span style={{ ...S.cardQueryDot, background: card.color }} />
+                          <span style={S.cardQueryLabel}>{q.label}</span>
+                          <span style={S.cardQueryArrow}><Ic.ArrowRight /></span>
+                        </button>
+                      ))}
+                      <div style={{ ...S.cardHint, color: card.color }}>Ask anything about {card.label.toLowerCase()}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -1401,16 +1489,37 @@ const S = {
   pdfCloseFullBtn:  { flex:1, padding:'0.6rem 1rem', borderRadius:9, background:'#F3F4F6', color:'#374151', border:'1px solid #E5E7EB', fontSize:'0.82rem', fontWeight:600, fontFamily:'inherit', cursor:'pointer' },
   pdfDownloadBtn:   { flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'0.6rem 1rem', borderRadius:9, background:'linear-gradient(135deg,#1565C0,#2196F3)', color:'#fff', border:'none', fontSize:'0.82rem', fontWeight:650, fontFamily:'inherit', cursor:'pointer', boxShadow:'0 4px 14px rgba(21,101,192,0.32)' },
 
-  /* ── Stage 2: mesh, theme toggle, quick-query panel ── */
+  /* ── Stage 2+: centered hero empty-state ── */
   mesh: { position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' },
   themeToggle: { width: 32, height: 32, borderRadius: 9, border: '1px solid var(--head-border)', background: 'var(--head-lang-bg)', color: 'var(--head-lang-txt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   quickBtn: { width: 38, height: 38, flexShrink: 0, borderRadius: 11, border: '1px solid var(--in-icon-border)', background: 'var(--in-icon-bg)', color: 'var(--in-icon-txt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  quickPanel: { maxWidth: 860, margin: '0 auto 10px', background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)', borderRadius: 16, padding: 14, boxShadow: 'var(--glass-shadow)' },
-  quickPanelHead: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 },
-  quickPanelTitle: { fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: 15, color: 'var(--glass-txt)', letterSpacing: '-0.01em' },
-  quickPanelSub: { fontSize: 11.5, color: 'var(--glass-dim)', marginTop: 1 },
-  quickPanelGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 10, maxHeight: 340, overflowY: 'auto' },
-  quickCard: { background: '#fff', borderRadius: 11, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
+  hero: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', position: 'relative', zIndex: 2 },
+  heroInner: { width: '100%', maxWidth: 780, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' },
+  connPill: { display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', border: '1px solid var(--glass-border)', borderRadius: 99, padding: '6px 14px', fontSize: 13, fontWeight: 600, color: 'var(--glass-txt)', marginBottom: 24, boxShadow: 'var(--glass-shadow)' },
+  heroH1: { fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 'clamp(34px,5vw,58px)', fontWeight: 800, color: 'var(--hero-h1)', letterSpacing: '-0.035em', lineHeight: 1.05, marginBottom: 14, textShadow: 'var(--hero-h1-shadow)' },
+  heroSub: { fontSize: 'clamp(15px,1.6vw,18px)', color: 'var(--hero-sub)', marginBottom: 34, fontWeight: 450, textShadow: 'var(--hero-sub-shadow)' },
+  heroBox: { width: '100%', maxWidth: 720, background: 'var(--in-bg)', border: '1px solid var(--in-border)', borderRadius: 20, padding: '16px 16px 12px', boxShadow: 'var(--in-box-shadow)', textAlign: 'left' },
+  heroTextarea: { width: '100%', boxSizing: 'border-box', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontSize: 16, fontFamily: 'inherit', color: 'var(--in-txt)', lineHeight: 1.5, minHeight: 48, maxHeight: 160, padding: '4px 2px' },
+  heroBoxFooter: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 },
+  heroPlusBtn: { width: 36, height: 36, flexShrink: 0, borderRadius: 10, border: '1px solid var(--in-icon-border)', background: 'var(--in-icon-bg)', color: 'var(--in-icon-txt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  heroLangPill: { fontSize: 13, fontWeight: 600, color: 'var(--in-chip-txt)', background: 'var(--glass-chip-bg)', borderRadius: 99, padding: '6px 12px' },
+  heroMicBtn: { width: 36, height: 36, flexShrink: 0, borderRadius: 10, border: '1px solid var(--in-icon-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  heroSendBtn: { width: 36, height: 36, flexShrink: 0, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#1565C0,#2196F3)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 160ms' },
+  quickPill: { display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 22, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', border: '1px solid var(--glass-border)', borderRadius: 99, padding: '9px 16px', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--glass-txt)', boxShadow: 'var(--glass-shadow)', transition: 'transform 150ms' },
+  quickPillIcon: { fontSize: 14 },
+  quickPillLabel: { fontSize: 14, fontWeight: 650 },
+  quickPillCount: { fontSize: 11.5, fontWeight: 700, color: 'var(--glass-dim)', background: 'var(--glass-chip-bg)', borderRadius: 99, padding: '1px 8px' },
+
+  /* Quick-queries centered modal */
+  quickOverlay: { position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  quickBackdrop: { position: 'absolute', inset: 0, background: 'rgba(7,17,31,0.5)', backdropFilter: 'blur(3px)' },
+  quickModal: { position: 'relative', width: '100%', maxWidth: 1000, maxHeight: '86vh', overflowY: 'auto', background: 'var(--app-bg)', borderRadius: 20, padding: 22, boxShadow: '0 40px 100px rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)' },
+  quickModalHead: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18 },
+  quickModalIcon: { fontSize: 20 },
+  quickModalTitle: { fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 20, color: 'var(--head-title)', letterSpacing: '-0.02em' },
+  quickModalSub: { fontSize: 12.5, color: 'var(--glass-dim)', marginTop: 2 },
+  quickModalGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 16 },
+  quickCard: { background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' },
 };
 /* ══════════════════════════════════════════════════════════════════════════════
    THEME PALETTES + ANIMATED MESH  (Stage 2)
@@ -1423,8 +1532,9 @@ const THEME_CSS = `
   --head-bg:rgba(255,255,255,0.86); --head-border:#E5E7EB; --head-title:#07111F;
   --head-lang-bg:#F3F4F6; --head-lang-txt:#374151;
   --glass-bg:rgba(255,255,255,0.82); --glass-border:rgba(21,101,192,0.16); --glass-txt:#12325a; --glass-dim:rgba(18,50,90,0.5);
-  --glass-shadow:0 10px 30px rgba(21,101,192,0.14);
-  --in-bg:linear-gradient(180deg,#FFFFFF,#F2F7FD); --in-border:rgba(21,101,192,0.18); --in-txt:#0B1A2E; --in-ph:rgba(11,26,46,0.4);
+  --glass-shadow:0 10px 30px rgba(21,101,192,0.14); --glass-chip-bg:rgba(21,101,192,0.08);
+  --hero-h1:#0B1A2E; --hero-sub:rgba(11,26,46,0.62); --hero-h1-shadow:0 2px 24px rgba(21,101,192,0.10); --hero-sub-shadow:none;
+  --in-bg:linear-gradient(180deg,#FFFFFF,#F2F7FD); --in-border:rgba(21,101,192,0.18); --in-txt:#0B1A2E; --in-ph:rgba(11,26,46,0.4); --in-chip-txt:#1565C0;
   --in-icon-bg:#EDF3FB; --in-icon-border:rgba(21,101,192,0.16); --in-icon-txt:#1565C0;
   --in-box-shadow:0 24px 60px rgba(21,101,192,0.15),0 4px 14px rgba(7,17,31,0.06);
   --mesh-base:linear-gradient(178deg,#FCFDFF 0%,#EEF4FC 38%,#DCEAFB 66%,#C3DCF7 100%);
@@ -1442,8 +1552,9 @@ const THEME_CSS = `
   --head-bg:rgba(11,18,32,0.82); --head-border:rgba(255,255,255,0.08); --head-title:#EAF1FA;
   --head-lang-bg:rgba(255,255,255,0.08); --head-lang-txt:rgba(255,255,255,0.7);
   --glass-bg:rgba(10,17,32,0.55); --glass-border:rgba(255,255,255,0.14); --glass-txt:rgba(255,255,255,0.92); --glass-dim:rgba(255,255,255,0.5);
-  --glass-shadow:0 10px 30px rgba(5,10,25,0.4);
-  --in-bg:linear-gradient(180deg,#101C31,#0B1524); --in-border:rgba(255,255,255,0.11); --in-txt:#EAF1FA; --in-ph:rgba(226,235,246,0.42);
+  --glass-shadow:0 10px 30px rgba(5,10,25,0.4); --glass-chip-bg:rgba(255,255,255,0.08);
+  --hero-h1:#ffffff; --hero-sub:rgba(255,255,255,0.72); --hero-h1-shadow:0 2px 30px rgba(5,10,25,0.35); --hero-sub-shadow:0 1px 14px rgba(5,10,25,0.3);
+  --in-bg:linear-gradient(180deg,#101C31,#0B1524); --in-border:rgba(255,255,255,0.11); --in-txt:#EAF1FA; --in-ph:rgba(226,235,246,0.42); --in-chip-txt:#90CAF9;
   --in-icon-bg:rgba(255,255,255,0.07); --in-icon-border:rgba(255,255,255,0.12); --in-icon-txt:rgba(255,255,255,0.85);
   --in-box-shadow:0 30px 80px rgba(5,10,25,0.55),0 6px 20px rgba(0,0,0,0.35);
   --mesh-base:linear-gradient(178deg,#0A1120 0%,#0D1B34 34%,#173766 62%,#2B5EA8 100%);
