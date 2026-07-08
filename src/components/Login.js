@@ -94,7 +94,7 @@ export default function Login({ onLogin, logoutReason }) {
             </div>
           </div>
           <div>
-            <div style={S.brandName}>AIVA Assistant</div>
+            <div style={S.brandName}>AIVA</div>
             <div style={S.brandSub}>AYAAM ERP</div>
           </div>
         </div>

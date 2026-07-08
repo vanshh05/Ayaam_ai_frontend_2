@@ -875,7 +875,7 @@ export default function Chat({ user, onLogout }) {
               <img src={aivaMark} alt="AIVA" style={S.brandMarkImg} />
             </div>
             <div>
-              <div style={S.brandTitle}>AIVA Assistant</div>
+              <div style={S.brandTitle}>AIVA</div>
               <div style={S.brandSub}>AYAAM ERP</div>
             </div>
           </div>
