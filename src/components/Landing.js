@@ -155,7 +155,7 @@ export default function Landing() {
             <img src={logo} alt="AIVA" style={{ width: '68%', height: '68%', objectFit: 'contain' }} />
           </div>
           <div>
-            <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 13.5, letterSpacing: '-0.01em', color: '#07111F', lineHeight: 1.15 }}>AIVA Assistant</div>
+            <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 13.5, letterSpacing: '-0.01em', color: '#07111F', lineHeight: 1.15 }}>AIVA</div>
             <div style={{ fontSize: 10.5, color: '#94A3B8', fontWeight: 500, marginTop: 1 }}>AYAAM ERP</div>
           </div>
         </div>
