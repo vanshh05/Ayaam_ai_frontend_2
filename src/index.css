@@ -188,6 +188,16 @@ body {
   to   { background-position: 200% 0; }
 }
 
+/* PDF preview panel slide-in */
+@keyframes pdfSlideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes pdfBackdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════════
    UTILITY CLASSES
 ══════════════════════════════════════════════════════════════════════════════ */
@@ -344,8 +354,8 @@ body {
 }
 @media (hover: hover) and (pointer: fine) {
   .hist-item:hover {
-    background:   rgba(21,101,192,0.08) !important;
-    border-color: rgba(21,101,192,0.35) !important;
+    background:   rgba(255,255,255,0.07) !important;
+    border-color: rgba(33,150,243,0.35) !important;
     transform:    translateX(3px);
   }
 }
@@ -568,8 +578,6 @@ body {
   line-height: 1.75;
   color: var(--tx-1);
   letter-spacing: 0.01em;
-  overflow-x: auto;
-  max-width: 100%;
 }
 .md-body p             { margin-bottom: 0.55em; }
 .md-body p:last-child  { margin-bottom: 0; }
@@ -643,13 +651,12 @@ body {
   border-radius: var(--r-sm);
   overflow: hidden;
   box-shadow: var(--sh-sm);
-  background: #fff;
 }
 .md-body thead th {
   background: var(--blue);
   color: #fff;
   padding: 9px 12px;
-  text-align: left;
+  text-align: center !important;
   font-weight: 600;
   font-size: 11.5px;
   letter-spacing: 0.04em;
@@ -659,13 +666,12 @@ body {
 .md-body tbody tr {
   border-bottom: 1px solid var(--b-2);
   transition: background var(--t-xs);
-  background: #fff;
 }
 .md-body tbody tr:last-child { border-bottom: none; }
 @media (hover: hover) and (pointer: fine) {
   .md-body tbody tr:hover td { background: var(--blue-pale) !important; }
 }
-.md-body tbody td { padding: 7px 12px; color: var(--tx-1); vertical-align: top; background: #fff; }
+.md-body tbody td { padding: 7px 12px; color: var(--tx-1); vertical-align: top; }
 .md-body tbody tr:nth-child(even) td { background: #F8FAFC; }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -698,3 +704,13 @@ body {
 .admin-back:hover { background: rgba(255,255,255,0.16) !important; }
 .admin-submit:hover { opacity: 0.92; }
 .admin-row-btn:hover { opacity: 0.82; }
+
+/* ── PDF preview panel ─────────────────────────────────────── */
+.pdf-panel { animation: pdfSlideIn 340ms var(--ease-out) both; }
+.pdf-backdrop { animation: pdfBackdropIn 200ms ease-out both; }
+
+/* ── Follow-up chips ────────────────────────────────────────── */
+.follow-up-chip { transition: background 150ms, color 150ms, border-color 150ms; }
+@media (hover: hover) and (pointer: fine) {
+  .follow-up-chip:hover { background: #EFF6FF !important; color: #1565C0 !important; border-color: #BFDBFE !important; }
+}

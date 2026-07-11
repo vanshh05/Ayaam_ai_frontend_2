@@ -282,7 +282,7 @@ function countTableRows(text) {
 /* ── PDF helpers — UNTOUCHED ─────────────────────────────────────────────────── */
 async function downloadAsPDF(text, title, companyName) {
   const htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
-  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1A2B3C;padding:20px 28px}.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1565C0;padding-bottom:10px;margin-bottom:16px}.brand{font-size:18px;font-weight:800;color:#1565C0;letter-spacing:0.05em}.brand span{color:#FF6B2B}.meta{text-align:right;font-size:10px;color:#8896A5}.meta strong{color:#1A2B3C;display:block;font-size:11px}h1,h2,h3{color:#1565C0;margin:12px 0 6px}h1{font-size:15px}h2{font-size:13px}h3{font-size:12px}p{margin:4px 0;line-height:1.6}strong{font-weight:700}ul,ol{padding-left:18px;margin:6px 0}li{margin:3px 0;line-height:1.5}table{border-collapse:collapse;width:100%;margin:10px 0;font-size:11px}th{background:#1565C0;color:#fff;padding:7px 10px;text-align:left;font-weight:700}td{padding:6px 10px;border-bottom:1px solid #EEF2F7}tr:nth-child(even) td{background:#F8FAFC}.footer{margin-top:20px;padding-top:8px;border-top:1px solid #DDE3EA;font-size:9px;color:#B0BAC6;display:flex;justify-content:space-between}</style>
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1A2B3C;padding:20px 28px}.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1565C0;padding-bottom:10px;margin-bottom:16px}.brand{font-size:18px;font-weight:800;color:#1565C0;letter-spacing:0.05em}.brand span{color:#FF6B2B}.meta{text-align:right;font-size:10px;color:#8896A5}.meta strong{color:#1A2B3C;display:block;font-size:11px}h1,h2,h3{color:#1565C0;margin:12px 0 6px}h1{font-size:15px}h2{font-size:13px}h3{font-size:12px}p{margin:4px 0;line-height:1.6}strong{font-weight:700}ul,ol{padding-left:18px;margin:6px 0}li{margin:3px 0;line-height:1.5}table{border-collapse:collapse;width:100%;margin:10px 0;font-size:11px}th{background:#1565C0;color:#fff;padding:7px 10px;text-align:center;font-weight:700}td{padding:6px 10px;border-bottom:1px solid #EEF2F7}tr:nth-child(even) td{background:#F8FAFC}.footer{margin-top:20px;padding-top:8px;border-top:1px solid #DDE3EA;font-size:9px;color:#B0BAC6;display:flex;justify-content:space-between}</style>
   </head><body>
   <div class="header"><div><div class="brand">AYAAM<span>ERP</span></div><div style="font-size:10px;color:#8896A5;margin-top:2px">AI Assistant Report</div></div><div class="meta"><strong>${companyName||'Ayaam ERP'}</strong>Generated: ${new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</div></div>
   <div class="content">${markdownToHtml(text)}</div>
@@ -296,28 +296,35 @@ async function downloadAsPDF(text, title, companyName) {
 
 function markdownToHtml(md) {
   const lines=md.split('\n'); let html=''; let inTable=false; let tableHeaderDone=false;
+  let colAligns=[];
+  const alignsOf=(sep)=>sep.trim().slice(1,-1).split('|').map(cell=>{
+    const t=cell.trim(); const l=t.startsWith(':'); const r=t.endsWith(':');
+    if(l&&r)return 'center'; if(r)return 'right'; if(l)return 'left'; return null;
+  });
+  const tdStyle=(i)=>colAligns[i]?` style="text-align:${colAligns[i]}"`:'';
   for(let i=0;i<lines.length;i++){
     const line=lines[i];
     const isTableRow=line.trim().startsWith('|')&&line.trim().endsWith('|');
     const isSeparator=isTableRow&&line.replace(/[|\s\-:]/g,'').length===0;
     if(isTableRow&&!isSeparator){
-      if(!inTable){html+='<table><thead>';inTable=true;tableHeaderDone=false;}
-      const cells=line.trim().slice(1,-1).split('|').map(c=>c.trim());
-      if(!tableHeaderDone) html+='<tr>'+cells.map(c=>`<th>${c}</th>`).join('')+'</tr>';
-      else html+='<tr>'+cells.map(c=>`<td>${c}</td>`).join('')+'</tr>';
-    } else if(isSeparator){
+      if(!inTable){html+='<table><thead>';inTable=true;tableHeaderDone=false;colAligns=[];}
+      const cells=line.trim().slice(1,-1).split('|').map(x=>x.trim());
+      if(!tableHeaderDone)html+='<tr>'+cells.map(x=>`<th>${x}</th>`).join('')+'</tr>';
+      else html+='<tr>'+cells.map((x,ci)=>`<td${tdStyle(ci)}>${x}</td>`).join('')+'</tr>';
+    }else if(isSeparator){
+      colAligns=alignsOf(line);
       html+='</thead><tbody>';tableHeaderDone=true;
-    } else {
+    }else{
       if(inTable){html+='</tbody></table>';inTable=false;tableHeaderDone=false;}
-      if(/^### /.test(line)) html+=`<h3>${line.slice(4)}</h3>`;
-      else if(/^## /.test(line)) html+=`<h2>${line.slice(3)}</h2>`;
-      else if(/^# /.test(line)) html+=`<h1>${line.slice(2)}</h1>`;
-      else if(/^- /.test(line)) html+=`<li>${line.slice(2).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</li>`;
-      else if(line.trim()==='') html+='<br>';
+      if(/^### /.test(line))html+=`<h3>${line.slice(4)}</h3>`;
+      else if(/^## /.test(line))html+=`<h2>${line.slice(3)}</h2>`;
+      else if(/^# /.test(line))html+=`<h1>${line.slice(2)}</h1>`;
+      else if(/^- /.test(line))html+=`<li>${line.slice(2).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</li>`;
+      else if(line.trim()==='')html+='<br>';
       else html+=`<p>${line.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>')}</p>`;
     }
   }
-  if(inTable) html+='</tbody></table>';
+  if(inTable)html+='</tbody></table>';
   return html;
 }
 
@@ -346,7 +353,11 @@ function buildExportTableHtml(exportData, label) {
     const extras=rawCols.filter(c=>!COLUMN_ORDER[table].includes(c));
     displayCols=[...ordered,...extras];
   } else { displayCols=rawCols; }
-  const rowsHtml=(data||[]).map(row=>'<tr>'+displayCols.map(c=>`<td>${row[c]!=null?row[c]:''}</td>`).join('')+'</tr>').join('');
+  const alignOf=(col)=>{const n=col.toLowerCase();
+    if(/(amount|debit|credit|balance|quantity|qty|total|rate|price|gross|taxable|sgst|cgst|igst|discount|outstanding|overdue|limit|business)/.test(n))return 'right';
+    if(/(name|party|item|particular|bank|address|email|remark)/.test(n))return 'left';
+    return 'center';};
+  const rowsHtml=(data||[]).map(row=>'<tr>'+displayCols.map(c=>`<td style="text-align:${alignOf(c)}">${row[c]!=null?row[c]:''}</td>`).join('')+'</tr>').join('');
   const theadHtml = '<tr>'+displayCols.map(c=>`<th>${c.replace(/_/g,' ').toUpperCase()}</th>`).join('')+'</tr>';
   return { displayCols, tableHtml: `<table><thead>${theadHtml}</thead><tbody>${rowsHtml}</tbody></table>` };
 }
@@ -354,7 +365,7 @@ function buildExportTableHtml(exportData, label) {
 async function downloadExportPDF(exportData, label, companyName) {
   const{total_rows}=exportData;
   const { tableHtml } = buildExportTableHtml(exportData, label);
-  const htmlContent=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${label}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;font-size:10px;color:#1A2B3C;padding:16px 20px}.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1565C0;padding-bottom:8px;margin-bottom:12px}.brand{font-size:16px;font-weight:800;color:#1565C0}.brand span{color:#FF6B2B}.meta{text-align:right;font-size:9px;color:#8896A5}.meta strong{color:#1A2B3C;display:block;font-size:10px}.info{background:#F0F4F8;border-left:3px solid #1565C0;padding:6px 10px;border-radius:4px;margin-bottom:10px;font-size:10px}table{border-collapse:collapse;width:100%;margin-top:8px;font-size:9px}th{background:#1565C0;color:#fff;padding:5px 7px;text-align:left;font-weight:700;white-space:nowrap}td{padding:4px 7px;border-bottom:1px solid #EEF2F7;word-break:break-word;max-width:150px}tr:nth-child(even) td{background:#F8FAFC}.footer{margin-top:14px;padding-top:6px;border-top:1px solid #DDE3EA;font-size:8px;color:#B0BAC6;display:flex;justify-content:space-between}</style></head><body><div class="header"><div><div class="brand">AYAAM<span>ERP</span></div><div style="font-size:9px;color:#8896A5;margin-top:2px">AI Assistant Report</div></div><div class="meta"><strong>${companyName||'Ayaam ERP'}</strong>Generated: ${new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</div></div><div class="info"><strong>${label}</strong> &nbsp;·&nbsp; Total Records: <strong>${total_rows}</strong></div>${tableHtml}<div class="footer"><span>Powered by Ayaam ERP AI Assistant · Datawheel Software Technology LLP</span><span>${label} · ${total_rows} records</span></div></body></html>`;
+  const htmlContent=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${label}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;font-size:10px;color:#1A2B3C;padding:16px 20px}.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1565C0;padding-bottom:8px;margin-bottom:12px}.brand{font-size:16px;font-weight:800;color:#1565C0}.brand span{color:#FF6B2B}.meta{text-align:right;font-size:9px;color:#8896A5}.meta strong{color:#1A2B3C;display:block;font-size:10px}.info{background:#F0F4F8;border-left:3px solid #1565C0;padding:6px 10px;border-radius:4px;margin-bottom:10px;font-size:10px}table{border-collapse:collapse;width:100%;margin-top:8px;font-size:9px}th{background:#1565C0;color:#fff;padding:5px 7px;text-align:center;font-weight:700;white-space:nowrap}td{padding:4px 7px;border-bottom:1px solid #EEF2F7;word-break:break-word;max-width:150px}tr:nth-child(even) td{background:#F8FAFC}.footer{margin-top:14px;padding-top:6px;border-top:1px solid #DDE3EA;font-size:8px;color:#B0BAC6;display:flex;justify-content:space-between}</style></head><body><div class="header"><div><div class="brand">AYAAM<span>ERP</span></div><div style="font-size:9px;color:#8896A5;margin-top:2px">AI Assistant Report</div></div><div class="meta"><strong>${companyName||'Ayaam ERP'}</strong>Generated: ${new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</div></div><div class="info"><strong>${label}</strong> &nbsp;·&nbsp; Total Records: <strong>${total_rows}</strong></div>${tableHtml}<div class="footer"><span>Powered by Ayaam ERP AI Assistant · Datawheel Software Technology LLP</span><span>${label} · ${total_rows} records</span></div></body></html>`;
   const blob=new Blob([htmlContent],{type:'text/html'});
   const url=URL.createObjectURL(blob);
   const win=window.open(url,'_blank');
