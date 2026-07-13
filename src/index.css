@@ -578,6 +578,8 @@ body {
   line-height: 1.75;
   color: var(--tx-1);
   letter-spacing: 0.01em;
+  overflow-x: auto;
+  max-width: 100%;
 }
 .md-body p             { margin-bottom: 0.55em; }
 .md-body p:last-child  { margin-bottom: 0; }
@@ -651,6 +653,7 @@ body {
   border-radius: var(--r-sm);
   overflow: hidden;
   box-shadow: var(--sh-sm);
+  background: #fff;
 }
 .md-body thead th {
   background: var(--blue);
@@ -666,12 +669,13 @@ body {
 .md-body tbody tr {
   border-bottom: 1px solid var(--b-2);
   transition: background var(--t-xs);
+  background: #fff;
 }
 .md-body tbody tr:last-child { border-bottom: none; }
 @media (hover: hover) and (pointer: fine) {
   .md-body tbody tr:hover td { background: var(--blue-pale) !important; }
 }
-.md-body tbody td { padding: 7px 12px; color: var(--tx-1); vertical-align: top; }
+.md-body tbody td { padding: 7px 12px; color: var(--tx-1); vertical-align: top; background: #fff; }
 .md-body tbody tr:nth-child(even) td { background: #F8FAFC; }
 
 /* ══════════════════════════════════════════════════════════════════════════════
