@@ -5,7 +5,7 @@ const API_URL = process.env.REACT_APP_API_URL || '';
 
 const EMPTY_FORM = {
   username: '', password: '', full_name: '', email: '',
-  company_id: '', company_name: '', role: 'Owner',
+  company_id: '', company_name: '', role: 'Owner', party_id: '',
 };
 
 export default function AdminPanel({ user, onBack }) {
@@ -59,6 +59,7 @@ export default function AdminPanel({ user, onBack }) {
       company_id: u.company_id || '',
       company_name: u.company_name || '',
       role: u.role || 'Owner',
+      party_id: u.party_id != null ? String(u.party_id) : '',
     });
     setError('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -80,6 +81,12 @@ export default function AdminPanel({ user, onBack }) {
       if (!form.company_id.trim()) { setError('Company ID is required.'); return; }
     }
 
+    if (form.role === 'Dealer') {
+      const pid = form.party_id.trim();
+      if (!pid) { setError('Party ID is required for dealer accounts.'); return; }
+      if (!/^\d+$/.test(pid)) { setError('Party ID must be a number.'); return; }
+    }
+
     setSaving(true);
     try {
       if (editingId === null) {
@@ -91,6 +98,7 @@ export default function AdminPanel({ user, onBack }) {
           company_id:   form.company_id.trim(),
           company_name: form.company_name.trim(),
           role:         form.role,
+          party_id:     form.role === 'Dealer' ? form.party_id.trim() : '',
         }, authHeader);
         if (res.data.success) { flashNotice('User created.'); setForm(EMPTY_FORM); loadUsers(); }
         else setError(res.data.message || 'Could not create user.');
@@ -101,6 +109,7 @@ export default function AdminPanel({ user, onBack }) {
           company_id:   form.company_id.trim(),
           company_name: form.company_name.trim(),
           role:         form.role,
+          party_id:     form.role === 'Dealer' ? form.party_id.trim() : '',
         };
         if (form.password) body.password = form.password; // only reset if typed
         const res = await axios.put(`${API_URL}/api/admin/users/${editingId}`, body, authHeader);
@@ -237,8 +246,21 @@ export default function AdminPanel({ user, onBack }) {
                 >
                   <option value="Owner">Owner</option>
                   <option value="ADMIN">ADMIN</option>
+                  <option value="Dealer">Dealer</option>
                 </select>
               </Field>
+
+              {form.role === 'Dealer' && (
+                <Field label="Party ID (assigned by the ERP)">
+                  <input
+                    style={S.input}
+                    value={form.party_id}
+                    onChange={(e) => setForm({ ...form, party_id: e.target.value.replace(/[^0-9]/g, '') })}
+                    placeholder="e.g. 1024"
+                    inputMode="numeric"
+                  />
+                </Field>
+              )}
 
               <Field label="Company ID (select from existing data)">
                 <select
@@ -302,9 +324,12 @@ export default function AdminPanel({ user, onBack }) {
                       <td style={S.td}>{u.full_name || '—'}</td>
                       <td style={S.td}>{u.email || '—'}</td>
                       <td style={S.td}>
-                        <span style={{ ...S.roleTag, ...(u.role === 'ADMIN' ? S.roleAdmin : {}) }}>
+                        <span style={{ ...S.roleTag, ...(u.role === 'ADMIN' ? S.roleAdmin : (u.role === 'Dealer' ? S.roleDealer : {})) }}>
                           {u.role}
                         </span>
+                        {u.role === 'Dealer' && u.party_id != null && u.party_id !== '' && (
+                          <span style={S.partyTag}>#{u.party_id}</span>
+                        )}
                       </td>
                       <td style={S.td}>{u.company_id}</td>
                       <td style={S.td}>
@@ -445,6 +470,11 @@ const S = {
     background: '#EFF6FF', color: '#1565C0',
   },
   roleAdmin: { background: '#FEF3C7', color: '#B45309' },
+  roleDealer: { background: '#DCFCE7', color: '#15803D' },
+  partyTag: {
+    marginLeft: '0.4rem', fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem',
+    borderRadius: 99, background: '#EFF6FF', color: '#1565C0',
+  },
 
   statusTag: { fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: 99 },
   statusOn:  { background: '#DCFCE7', color: '#15803D' },

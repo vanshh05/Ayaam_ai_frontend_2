@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Landing from './components/Landing';
 import Login from './components/Login';
 import Chat from './components/Chat';
+import DealerStock from './components/DealerStock';
 
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -77,24 +76,13 @@ export default function App() {
     };
   }, [user, doLogout]);
 
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route
-          path="/login"
-          element={user
-            ? <Navigate to="/assistant" replace />
-            : <Login onLogin={handleLogin} logoutReason={logoutReason} />}
-        />
-        <Route
-          path="/assistant"
-          element={user
-            ? <Chat user={user} onLogout={handleLogout} onAuthError={handleAuthError} />
-            : <Navigate to="/login" replace />}
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  );
+  if (!user) {
+    return <Login onLogin={handleLogin} logoutReason={logoutReason} />;
+  }
+
+  // Dealers get the stock/reservation portal; everyone else gets the AIVA chat.
+  const isDealer = String(user.role || '').toUpperCase() === 'DEALER';
+  return isDealer
+    ? <DealerStock user={user} onLogout={handleLogout} onAuthError={handleAuthError} />
+    : <Chat user={user} onLogout={handleLogout} onAuthError={handleAuthError} />;
 }
