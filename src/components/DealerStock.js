@@ -60,7 +60,6 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.token]);
 
   useEffect(() => { load(); }, [load]);
