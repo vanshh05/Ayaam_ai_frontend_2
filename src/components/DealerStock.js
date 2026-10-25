@@ -22,10 +22,10 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
-  const [acting, setActing]     = useState(null);  // chassis_no of a single in-flight action
   const [bulkBusy, setBulkBusy] = useState(false);
   const [selected, setSelected] = useState([]);    // chassis_no[] in the current tab
   const [toast, setToast]       = useState(null);  // { ok, text }
+  const [detailItem, setDetailItem] = useState(null); // item whose details modal is open
 
   const authHeader = { headers: { Authorization: `Bearer ${user.token}` } };
   const isAuthErr = (e) => e && e.response && (e.response.status === 401 || e.response.status === 403);
@@ -76,35 +76,6 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
 
   const toggle = (chassis) =>
     setSelected(prev => (prev.includes(chassis) ? prev.filter(x => x !== chassis) : [...prev, chassis]));
-
-  // ── single-item actions (quick path) ──
-  const reserve = async (item) => {
-    setActing(item.chassis_no);
-    try {
-      const res = await axios.post(`${API_URL}/api/dealer/reserve`, { chassis_no: item.chassis_no }, authHeader);
-      if (res.data && res.data.success) flash(true, 'Reserved.');
-      else flash(false, (res.data && res.data.message) || 'Could not reserve.');
-      await load();
-    } catch (e) {
-      if (!isAuthErr(e)) flash(false, 'Could not reserve. Try again.');
-    } finally { setActing(null); }
-  };
-
-  const unreserve = async (item) => {
-    const ok = window.confirm(
-      `Cancel the reservation on ${item.item_name} (chassis ${item.chassis_no})?\n\nIt returns to the available pool for everyone.`
-    );
-    if (!ok) return;
-    setActing(item.chassis_no);
-    try {
-      const res = await axios.post(`${API_URL}/api/dealer/unreserve`, { chassis_no: item.chassis_no }, authHeader);
-      if (res.data && res.data.success) flash(true, 'Reservation cancelled.');
-      else flash(false, (res.data && res.data.message) || 'Could not un-reserve.');
-      await load();
-    } catch (e) {
-      if (!isAuthErr(e)) flash(false, 'Could not un-reserve. Try again.');
-    } finally { setActing(null); }
-  };
 
   // ── bulk actions ──
   const runBulk = async () => {
@@ -211,9 +182,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
         ) : (
           <div style={S.grid}>
             {list.map((item, i) => {
-              const busy = acting === item.chassis_no;
               const checked = selected.includes(item.chassis_no);
-              const specs = item.specs || {};
               return (
                 <div
                   key={item.chassis_no || i}
@@ -231,30 +200,11 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
                     </span>
                   </div>
 
-                  <div style={S.specWrap}>
-                    {Object.keys(specs).map((label) => {
-                      const isChassis = label.toLowerCase().includes('chassis');
-                      return (
-                        <span key={label} style={{ ...S.specChip, ...(isChassis ? S.specChipKey : {}) }}>
-                          <span style={S.specLabel}>{label}</span>
-                          <span style={{ ...S.specValue, ...(isChassis ? { color: '#0D1B2A' } : {}) }}>
-                            {String(specs[label])}
-                          </span>
-                        </span>
-                      );
-                    })}
-                  </div>
-
                   <button
-                    style={{
-                      ...S.actBtn,
-                      ...(reservedTab ? S.actBtnCancel : S.actBtnReserve),
-                      ...((busy || bulkBusy) ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
-                    }}
-                    onClick={(e) => { e.stopPropagation(); reservedTab ? unreserve(item) : reserve(item); }}
-                    disabled={busy || bulkBusy}
+                    style={S.detailsBtn}
+                    onClick={(e) => { e.stopPropagation(); setDetailItem(item); }}
                   >
-                    {busy ? 'Working…' : reservedTab ? 'Un-reserve' : 'Reserve'}
+                    View details ›
                   </button>
                 </div>
               );
@@ -277,6 +227,37 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
               >
                 {bulkBusy ? 'Working…' : reservedTab ? `Un-reserve ${selected.length}` : `Reserve ${selected.length}`}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detailItem && (
+        <div style={S.detailOverlay} onClick={() => setDetailItem(null)}>
+          <div style={S.detailModal} onClick={(e) => e.stopPropagation()}>
+            <div style={S.detailHead}>
+              <span style={S.detailHeadTitle}>Item details</span>
+              <button style={S.detailClose} onClick={() => setDetailItem(null)}>✕</button>
+            </div>
+            <div style={S.detailName}>{detailItem.item_name || 'Item'}</div>
+            <span style={{
+              ...S.statusPill,
+              ...(detailItem.item_status === 'Reserved' ? S.pillReserved : S.pillAvailable),
+              display: 'inline-block', marginTop: '0.5rem', marginBottom: '1rem',
+            }}>
+              {detailItem.item_status || '—'}
+            </span>
+            <div style={S.detailList}>
+              {Object.keys(detailItem.specs || {}).length === 0 ? (
+                <div style={S.detailEmpty}>No specifications recorded for this item.</div>
+              ) : (
+                Object.keys(detailItem.specs).map((label) => (
+                  <div key={label} style={S.detailRow}>
+                    <span style={S.detailLabel}>{label}</span>
+                    <span style={S.detailValue}>{String(detailItem.specs[label])}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -418,4 +399,29 @@ const S = {
   },
   bulkBtnReserve: { background: 'linear-gradient(135deg,#1565C0,#2196F3)', color: '#fff' },
   bulkBtnCancel: { background: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' },
+
+  detailsBtn: {
+    marginTop: '0.9rem', alignSelf: 'flex-start', background: 'none', border: 'none',
+    color: '#1565C0', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: 0,
+  },
+  detailOverlay: {
+    position: 'fixed', inset: 0, background: 'rgba(13,27,42,0.55)', display: 'flex',
+    alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem',
+  },
+  detailModal: {
+    background: '#fff', borderRadius: 14, padding: '1.6rem', width: '100%', maxWidth: 460,
+    maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.3)',
+  },
+  detailHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.8rem' },
+  detailHeadTitle: { fontSize: '1.05rem', fontWeight: 800, color: '#0D1B2A' },
+  detailClose: { background: 'none', border: 'none', fontSize: '1.1rem', color: '#64748B', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 },
+  detailName: { fontSize: '1.05rem', fontWeight: 800, color: '#0D1B2A', lineHeight: 1.3 },
+  detailList: { marginTop: '0.4rem' },
+  detailEmpty: { color: '#94A3B8', fontSize: '0.85rem', padding: '1rem 0', textAlign: 'center' },
+  detailRow: {
+    display: 'flex', justifyContent: 'space-between', gap: '1rem',
+    padding: '0.7rem 0', borderBottom: '1px solid #F1F5F9',
+  },
+  detailLabel: { fontSize: '0.82rem', fontWeight: 600, color: '#64748B' },
+  detailValue: { fontSize: '0.84rem', fontWeight: 700, color: '#0D1B2A', textAlign: 'right' },
 };
