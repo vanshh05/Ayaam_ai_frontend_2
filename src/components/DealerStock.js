@@ -3,6 +3,13 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
+// The dealer card highlights the item colour, not the chassis number.
+const colorOf = (item) => {
+  const specs = item.specs || {};
+  const key = Object.keys(specs).find((k) => /colou?r/i.test(k));
+  return key ? String(specs[key]) : '';
+};
+
 /**
  * Dealer portal (web) — plain REST, no AI. Full parity with the mobile
  * DealerStockScreen: the Available pool for the dealer's company plus the
@@ -183,6 +190,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
           <div style={S.grid}>
             {list.map((item, i) => {
               const checked = selected.includes(item.chassis_no);
+              const color = colorOf(item);
               return (
                 <div
                   key={item.chassis_no || i}
@@ -193,7 +201,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
                     <span style={{ ...S.checkbox, ...(checked ? S.checkboxOn : {}) }}>{checked ? '✓' : ''}</span>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={S.itemName}>{item.item_name || 'Item'}</div>
-                      <div style={S.chassis}>⬡ {item.chassis_no}</div>
+                      {color ? <div style={S.cardColor}>{color}</div> : null}
                     </div>
                     <span style={{ ...S.statusPill, ...(reservedTab ? S.pillReserved : S.pillAvailable) }}>
                       {reservedTab ? 'Reserved' : 'Available'}
@@ -360,6 +368,7 @@ const S = {
   checkboxOn: { background: '#1565C0', border: '2px solid #1565C0' },
   itemName: { fontSize: '0.98rem', fontWeight: 800, color: '#0D1B2A', lineHeight: 1.3 },
   chassis: { fontSize: '0.8rem', fontWeight: 700, color: '#1565C0', marginTop: 4, letterSpacing: '0.02em' },
+  cardColor: { fontSize: '0.84rem', fontWeight: 700, color: '#475569', marginTop: 4 },
   statusPill: { fontSize: '0.68rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: 99, whiteSpace: 'nowrap' },
   pillAvailable: { background: '#DCFCE7', color: '#15803D' },
   pillReserved: { background: '#FFEDD5', color: '#C2410C' },
