@@ -6,12 +6,15 @@ const API_URL = process.env.REACT_APP_API_URL || '';
 /**
  * Dealer portal (web) — plain REST, no AI. Full parity with the mobile
  * DealerStockScreen: the Available pool for the dealer's company plus the
- * dealer's own Reserved units, with reserve / un-reserve. First tap wins —
- * every action re-reads the server, which is the single source of truth.
+ * dealer's own Reserved units, with single and multi-select reserve /
+ * un-reserve. First tap wins; bulk actions are best-effort — units snatched
+ * between load and tap are reported, the rest go through.
  *
  *   GET  /api/dealer/stock
- *   POST /api/dealer/reserve    { chassis_no }
- *   POST /api/dealer/unreserve  { chassis_no }
+ *   POST /api/dealer/reserve         { chassis_no }
+ *   POST /api/dealer/unreserve       { chassis_no }
+ *   POST /api/dealer/reserve-bulk    { chassis_nos: [...] }
+ *   POST /api/dealer/unreserve-bulk  { chassis_nos: [...] }
  */
 export default function DealerStock({ user, onLogout, onAuthError }) {
   const [tab, setTab]           = useState('available'); // 'available' | 'reserved'
@@ -19,8 +22,10 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
-  const [acting, setActing]     = useState(null); // chassis_no in-flight
-  const [toast, setToast]       = useState(null); // { ok, text }
+  const [acting, setActing]     = useState(null);  // chassis_no of a single in-flight action
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [selected, setSelected] = useState([]);    // chassis_no[] in the current tab
+  const [toast, setToast]       = useState(null);  // { ok, text }
 
   const authHeader = { headers: { Authorization: `Bearer ${user.token}` } };
   const isAuthErr = (e) => e && e.response && (e.response.status === 401 || e.response.status === 403);
@@ -41,8 +46,10 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
 
   const flash = (ok, text) => {
     setToast({ ok, text });
-    setTimeout(() => setToast(null), 2800);
+    setTimeout(() => setToast(null), 3200);
   };
+
+  const clearSelection = () => setSelected([]);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -59,18 +66,25 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
       setError('Could not load stock. ' + (e.response?.data?.message || ''));
     } finally {
       setLoading(false);
+      setSelected([]); // selection never survives a reload
     }
   }, [user.token]);
 
   useEffect(() => { load(); }, [load]);
 
+  const switchTab = (t) => { setTab(t); clearSelection(); };
+
+  const toggle = (chassis) =>
+    setSelected(prev => (prev.includes(chassis) ? prev.filter(x => x !== chassis) : [...prev, chassis]));
+
+  // ── single-item actions (quick path) ──
   const reserve = async (item) => {
     setActing(item.chassis_no);
     try {
       const res = await axios.post(`${API_URL}/api/dealer/reserve`, { chassis_no: item.chassis_no }, authHeader);
       if (res.data && res.data.success) flash(true, 'Reserved.');
       else flash(false, (res.data && res.data.message) || 'Could not reserve.');
-      await load(); // refresh either way — someone may have taken it first
+      await load();
     } catch (e) {
       if (!isAuthErr(e)) flash(false, 'Could not reserve. Try again.');
     } finally { setActing(null); }
@@ -92,8 +106,40 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
     } finally { setActing(null); }
   };
 
+  // ── bulk actions ──
+  const runBulk = async () => {
+    const reservedTab = tab === 'reserved';
+    const chassis = [...selected];
+    const n = chassis.length;
+    if (n === 0) return;
+
+    const ok = window.confirm(
+      reservedTab
+        ? `Un-reserve ${n} unit${n > 1 ? 's' : ''}? They return to the available pool for everyone.`
+        : `Reserve ${n} unit${n > 1 ? 's' : ''}? Any just taken by another dealer will be skipped.`
+    );
+    if (!ok) return;
+
+    setBulkBusy(true);
+    try {
+      if (reservedTab) {
+        const res = await axios.post(`${API_URL}/api/dealer/unreserve-bulk`, { chassis_nos: chassis }, authHeader);
+        const d = res.data || {};
+        flash((d.unreserved_count || 0) > 0, `Cancelled ${d.unreserved_count || 0}` + (d.failed_count ? ` · ${d.failed_count} not found` : ''));
+      } else {
+        const res = await axios.post(`${API_URL}/api/dealer/reserve-bulk`, { chassis_nos: chassis }, authHeader);
+        const d = res.data || {};
+        flash((d.reserved_count || 0) > 0, `Reserved ${d.reserved_count || 0}` + (d.failed_count ? ` · ${d.failed_count} just taken` : ''));
+      }
+      await load();
+    } catch (e) {
+      if (!isAuthErr(e)) flash(false, `Could not ${reservedTab ? 'un-reserve' : 'reserve'}. Try again.`);
+    } finally { setBulkBusy(false); }
+  };
+
   const list = tab === 'available' ? available : reservations;
   const reservedTab = tab === 'reserved';
+  const allSelected = list.length > 0 && selected.length === list.length;
 
   return (
     <div style={S.page}>
@@ -112,27 +158,36 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
         </div>
       </div>
 
-      <div style={S.body}>
+      <div style={{ ...S.body, paddingBottom: selected.length > 0 ? 96 : 24 }}>
         {/* Tabs + refresh */}
         <div style={S.controls}>
           <div style={S.segRow}>
-            <button
-              style={{ ...S.seg, ...(tab === 'available' ? S.segOn : {}) }}
-              onClick={() => setTab('available')}
-            >
+            <button style={{ ...S.seg, ...(tab === 'available' ? S.segOn : {}) }} onClick={() => switchTab('available')}>
               Available <span style={S.segCount}>{available.length}</span>
             </button>
-            <button
-              style={{ ...S.seg, ...(tab === 'reserved' ? S.segOn : {}) }}
-              onClick={() => setTab('reserved')}
-            >
+            <button style={{ ...S.seg, ...(tab === 'reserved' ? S.segOn : {}) }} onClick={() => switchTab('reserved')}>
               My Reservations <span style={S.segCount}>{reservations.length}</span>
             </button>
           </div>
-          <button style={S.refreshBtn} onClick={load} disabled={loading}>
+          <button style={S.refreshBtn} onClick={load} disabled={loading || bulkBusy}>
             {loading ? 'Refreshing…' : '↻ Refresh'}
           </button>
         </div>
+
+        {/* Select-all / count row */}
+        {!loading && !error && list.length > 0 && (
+          <div style={S.selRow}>
+            <button
+              style={S.selAll}
+              onClick={() => (allSelected ? clearSelection() : setSelected(list.map(i => i.chassis_no)))}
+            >
+              {allSelected ? 'Clear all' : 'Select all'}
+            </button>
+            <span style={S.selCount}>
+              {selected.length > 0 ? `${selected.length} selected` : 'Click items to multi-select'}
+            </span>
+          </div>
+        )}
 
         {/* Toast */}
         {toast && (
@@ -157,10 +212,16 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
           <div style={S.grid}>
             {list.map((item, i) => {
               const busy = acting === item.chassis_no;
+              const checked = selected.includes(item.chassis_no);
               const specs = item.specs || {};
               return (
-                <div key={item.chassis_no || i} style={S.card}>
+                <div
+                  key={item.chassis_no || i}
+                  style={{ ...S.card, ...(checked ? S.cardChecked : {}) }}
+                  onClick={() => !bulkBusy && toggle(item.chassis_no)}
+                >
                   <div style={S.cardTop}>
+                    <span style={{ ...S.checkbox, ...(checked ? S.checkboxOn : {}) }}>{checked ? '✓' : ''}</span>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={S.itemName}>{item.item_name || 'Item'}</div>
                       <div style={S.chassis}>⬡ {item.chassis_no}</div>
@@ -188,10 +249,10 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
                     style={{
                       ...S.actBtn,
                       ...(reservedTab ? S.actBtnCancel : S.actBtnReserve),
-                      ...(busy ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
+                      ...((busy || bulkBusy) ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
                     }}
-                    onClick={() => (reservedTab ? unreserve(item) : reserve(item))}
-                    disabled={busy}
+                    onClick={(e) => { e.stopPropagation(); reservedTab ? unreserve(item) : reserve(item); }}
+                    disabled={busy || bulkBusy}
                   >
                     {busy ? 'Working…' : reservedTab ? 'Un-reserve' : 'Reserve'}
                   </button>
@@ -201,6 +262,25 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
           </div>
         )}
       </div>
+
+      {/* Sticky bulk action bar */}
+      {selected.length > 0 && !loading && !error && (
+        <div style={S.bulkBar}>
+          <div style={S.bulkInner}>
+            <span style={S.bulkCount}>{selected.length} selected</span>
+            <div style={{ display: 'flex', gap: '0.6rem' }}>
+              <button style={S.bulkClear} onClick={clearSelection} disabled={bulkBusy}>Clear</button>
+              <button
+                style={{ ...S.bulkBtn, ...(reservedTab ? S.bulkBtnCancel : S.bulkBtnReserve), ...(bulkBusy ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }}
+                onClick={runBulk}
+                disabled={bulkBusy}
+              >
+                {bulkBusy ? 'Working…' : reservedTab ? `Un-reserve ${selected.length}` : `Reserve ${selected.length}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -234,7 +314,7 @@ const S = {
 
   controls: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    gap: '1rem', marginBottom: '1.2rem', flexWrap: 'wrap',
+    gap: '1rem', marginBottom: '0.9rem', flexWrap: 'wrap',
   },
   segRow: { display: 'flex', gap: '0.5rem', background: '#E8EEF6', padding: 4, borderRadius: 12 },
   seg: {
@@ -252,6 +332,13 @@ const S = {
     padding: '0.55rem 1.1rem', borderRadius: 9, fontSize: '0.84rem', fontWeight: 700,
     cursor: 'pointer', fontFamily: 'inherit',
   },
+
+  selRow: { display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' },
+  selAll: {
+    background: 'none', border: 'none', color: '#1565C0', fontSize: '0.82rem', fontWeight: 700,
+    cursor: 'pointer', fontFamily: 'inherit', padding: 0,
+  },
+  selCount: { fontSize: '0.8rem', color: '#94A3B8', fontWeight: 600 },
 
   toast: {
     padding: '0.65rem 1rem', borderRadius: 9, marginBottom: '1rem',
@@ -279,20 +366,27 @@ const S = {
   card: {
     background: '#fff', borderRadius: 14, padding: '1.2rem',
     boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04)',
-    display: 'flex', flexDirection: 'column',
+    display: 'flex', flexDirection: 'column', cursor: 'pointer',
+    border: '2px solid transparent', transition: 'border-color 120ms, background 120ms',
   },
-  cardTop: { display: 'flex', alignItems: 'flex-start', gap: '0.75rem' },
+  cardChecked: { border: '2px solid #2196F3', background: '#F5FAFF' },
+  cardTop: { display: 'flex', alignItems: 'flex-start', gap: '0.7rem' },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 7, border: '2px solid #CBD5E1', flexShrink: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: '#fff', fontSize: '0.8rem', fontWeight: 900, marginTop: 2,
+  },
+  checkboxOn: { background: '#1565C0', border: '2px solid #1565C0' },
   itemName: { fontSize: '0.98rem', fontWeight: 800, color: '#0D1B2A', lineHeight: 1.3 },
   chassis: { fontSize: '0.8rem', fontWeight: 700, color: '#1565C0', marginTop: 4, letterSpacing: '0.02em' },
   statusPill: { fontSize: '0.68rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: 99, whiteSpace: 'nowrap' },
   pillAvailable: { background: '#DCFCE7', color: '#15803D' },
   pillReserved: { background: '#FFEDD5', color: '#C2410C' },
 
-  specWrap: { display: 'flex', flexWrap: 'wrap', gap: '0.4rem', margin: '0.9rem 0 0' },
+  specWrap: { display: 'flex', flexWrap: 'wrap', gap: '0.4rem', margin: '0.9rem 0 0', paddingLeft: '1.9rem' },
   specChip: {
     display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-    background: '#F1F5F9', borderRadius: 7, padding: '0.22rem 0.55rem',
-    border: '1px solid #E2E8F0',
+    background: '#F1F5F9', borderRadius: 7, padding: '0.22rem 0.55rem', border: '1px solid #E2E8F0',
   },
   specChipKey: { background: '#EFF6FF', border: '1px solid #BFDBFE' },
   specLabel: { fontSize: '0.68rem', fontWeight: 600, color: '#94A3B8' },
@@ -304,4 +398,24 @@ const S = {
   },
   actBtnReserve: { background: 'linear-gradient(135deg,#1565C0,#2196F3)', color: '#fff' },
   actBtnCancel: { background: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' },
+
+  bulkBar: {
+    position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 900,
+    background: '#fff', borderTop: '1px solid #E2E8F0', boxShadow: '0 -4px 24px rgba(0,0,0,0.08)',
+  },
+  bulkInner: {
+    maxWidth: 1100, margin: '0 auto', padding: '0.9rem 1.5rem',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
+  },
+  bulkCount: { fontSize: '0.9rem', fontWeight: 700, color: '#0D1B2A' },
+  bulkClear: {
+    background: '#fff', border: '1px solid #CBD5E1', color: '#475569',
+    padding: '0.6rem 1.1rem', borderRadius: 10, fontSize: '0.86rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+  },
+  bulkBtn: {
+    border: 'none', borderRadius: 10, padding: '0.6rem 1.5rem',
+    fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+  },
+  bulkBtnReserve: { background: 'linear-gradient(135deg,#1565C0,#2196F3)', color: '#fff' },
+  bulkBtnCancel: { background: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' },
 };
