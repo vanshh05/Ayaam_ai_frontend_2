@@ -3,13 +3,6 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
-// The dealer card highlights the item colour, not the chassis number.
-const colorOf = (item) => {
-  const specs = item.specs || {};
-  const key = Object.keys(specs).find((k) => /colou?r/i.test(k));
-  return key ? String(specs[key]) : '';
-};
-
 // Detail-modal timestamp: label by status; value formatted as wall-clock (no timezone shift).
 const tsLabelFor = (item) => {
   const st = String(item && item.item_status ? item.item_status : '').toLowerCase();
@@ -138,6 +131,17 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
   const list = tab === 'available' ? available : tab === 'reserved' ? reservations : dispatched;
   const reservedTab = tab === 'reserved';
   const allSelected = list.length > 0 && selected.length === list.length;
+  const selectable = tab !== 'dispatched';
+  const showTs = tab === 'reserved' || tab === 'dispatched';
+  const tsHeader = tab === 'dispatched' ? 'Dispatched on' : 'Reserved on';
+  // Table columns: every populated spec label across the current list, excluding chassis
+  // (chassis stays hidden on the dashboard; it's shown in the View details modal).
+  const specCols = [];
+  list.forEach((it) => {
+    Object.keys(it.specs || {}).forEach((label) => {
+      if (!/chassis/i.test(label) && !specCols.includes(label)) specCols.push(label);
+    });
+  });
 
   return (
     <div style={S.page}>
@@ -175,21 +179,6 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
           </button>
         </div>
 
-        {/* Select-all / count row */}
-        {!loading && !error && list.length > 0 && tab !== 'dispatched' && (
-          <div style={S.selRow}>
-            <button
-              style={S.selAll}
-              onClick={() => (allSelected ? clearSelection() : setSelected(list.map(i => i.chassis_no)))}
-            >
-              {allSelected ? 'Clear all' : 'Select all'}
-            </button>
-            <span style={S.selCount}>
-              {selected.length > 0 ? `${selected.length} selected` : 'Click items to multi-select'}
-            </span>
-          </div>
-        )}
-
         {/* Toast */}
         {toast && (
           <div style={{ ...S.toast, ...(toast.ok ? S.toastOk : S.toastErr) }}>{toast.text}</div>
@@ -212,39 +201,58 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
               : 'No units available for your company right now.'}
           </div>
         ) : (
-          <div style={S.grid}>
-            {list.map((item, i) => {
-              const checked = selected.includes(item.chassis_no);
-              const color = colorOf(item);
-              const isDispatched = tab === 'dispatched';
-              return (
-                <div
-                  key={item.chassis_no || i}
-                  style={{ ...S.card, ...(checked ? S.cardChecked : {}), ...(isDispatched ? { cursor: 'default' } : {}) }}
-                  onClick={() => { if (!bulkBusy && !isDispatched) toggle(item.chassis_no); }}
-                >
-                  <div style={S.cardTop}>
-                    {!isDispatched && (
-                      <span style={{ ...S.checkbox, ...(checked ? S.checkboxOn : {}) }}>{checked ? '✓' : ''}</span>
-                    )}
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={S.itemName}>{item.item_name || 'Item'}</div>
-                      {color ? <div style={S.cardColor}>{color}</div> : null}
-                    </div>
-                    <span style={{ ...S.statusPill, ...(isDispatched ? S.pillDispatched : reservedTab ? S.pillReserved : S.pillAvailable) }}>
-                      {isDispatched ? 'Dispatched' : reservedTab ? 'Reserved' : 'Available'}
-                    </span>
-                  </div>
-
-                  <button
-                    style={S.detailsBtn}
-                    onClick={(e) => { e.stopPropagation(); setDetailItem(item); }}
-                  >
-                    View details ›
-                  </button>
-                </div>
-              );
-            })}
+          <div style={S.tableWrap}>
+            <table style={S.table}>
+              <thead>
+                <tr>
+                  {selectable && (
+                    <th style={{ ...S.th, width: 36, textAlign: 'center' }}>
+                      <span
+                        style={{ ...S.checkbox, ...(allSelected ? S.checkboxOn : {}), display: 'inline-flex', cursor: 'pointer' }}
+                        onClick={() => (allSelected ? clearSelection() : setSelected(list.map(i => i.chassis_no)))}
+                      >{allSelected ? '✓' : ''}</span>
+                    </th>
+                  )}
+                  <th style={S.th}>Item</th>
+                  {specCols.map((label) => <th key={label} style={S.th}>{label}</th>)}
+                  {showTs && <th style={S.th}>{tsHeader}</th>}
+                  <th style={{ ...S.th, textAlign: 'right' }}>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((item, i) => {
+                  const checked = selected.includes(item.chassis_no);
+                  return (
+                    <tr
+                      key={item.chassis_no || i}
+                      style={{ ...S.tr, ...(checked ? S.trChecked : {}), cursor: selectable ? 'pointer' : 'default' }}
+                      onClick={() => { if (selectable && !bulkBusy) toggle(item.chassis_no); }}
+                    >
+                      {selectable && (
+                        <td style={{ ...S.td, textAlign: 'center' }}>
+                          <span style={{ ...S.checkbox, ...(checked ? S.checkboxOn : {}), display: 'inline-flex' }}>{checked ? '✓' : ''}</span>
+                        </td>
+                      )}
+                      <td style={{ ...S.td, fontWeight: 700, color: '#0D1B2A' }}>{item.item_name || 'Item'}</td>
+                      {specCols.map((label) => (
+                        <td key={label} style={S.td}>
+                          {item.specs && item.specs[label] != null && String(item.specs[label]).trim() !== '' ? String(item.specs[label]) : '—'}
+                        </td>
+                      ))}
+                      {showTs && <td style={S.td}>{formatDateTime(item.last_updated_date) || '—'}</td>}
+                      <td style={{ ...S.td, textAlign: 'right' }}>
+                        <button
+                          style={{ ...S.detailsBtn, marginTop: 0 }}
+                          onClick={(e) => { e.stopPropagation(); setDetailItem(item); }}
+                        >
+                          View details ›
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -414,6 +422,13 @@ const S = {
   pillAvailable: { background: '#DCFCE7', color: '#15803D' },
   pillReserved: { background: '#FFEDD5', color: '#C2410C' },
   pillDispatched: { background: '#DBEAFE', color: '#1D4ED8' },
+
+  tableWrap: { overflowX: 'auto', background: '#fff', borderRadius: 14, border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04)' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', whiteSpace: 'nowrap' },
+  th: { textAlign: 'left', padding: '0.7rem 0.9rem', background: '#F1F5F9', color: '#475569', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.03em', borderBottom: '1px solid #E2E8F0' },
+  tr: { borderBottom: '1px solid #F1F5F9' },
+  trChecked: { background: '#F5FAFF' },
+  td: { padding: '0.6rem 0.9rem', color: '#334155', verticalAlign: 'middle' },
 
   specWrap: { display: 'flex', flexWrap: 'wrap', gap: '0.4rem', margin: '0.9rem 0 0', paddingLeft: '1.9rem' },
   specChip: {
