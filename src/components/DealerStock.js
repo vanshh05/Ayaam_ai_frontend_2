@@ -10,6 +10,24 @@ const colorOf = (item) => {
   return key ? String(specs[key]) : '';
 };
 
+// Detail-modal timestamp: label by status; value formatted as wall-clock (no timezone shift).
+const tsLabelFor = (item) => {
+  const st = String(item && item.item_status ? item.item_status : '').toLowerCase();
+  if (st === 'reserved') return 'Reserved on';
+  if (st === 'dispatch' || st === 'dispatched') return 'Dispatched on';
+  return '';
+};
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const formatDateTime = (s) => {
+  if (!s) return '';
+  const m = String(s).replace('T', ' ').match(/^(\d{4})-(\d{2})-(\d{2})[ ](\d{2}):(\d{2})/);
+  if (!m) return String(s);
+  let h = parseInt(m[4], 10);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return `${parseInt(m[3], 10)} ${MONTHS[parseInt(m[2], 10) - 1]} ${m[1]}, ${h}:${m[5]} ${ap}`;
+};
+
 /**
  * Dealer portal (web) — plain REST, no AI. Full parity with the mobile
  * DealerStockScreen: the Available pool for the dealer's company plus the
@@ -27,6 +45,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
   const [tab, setTab]           = useState('available'); // 'available' | 'reserved'
   const [available, setAvailable]       = useState([]);
   const [reservations, setReservations] = useState([]);
+  const [dispatched, setDispatched]     = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -65,6 +84,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
       if (res.data && res.data.success) {
         setAvailable(res.data.available || []);
         setReservations(res.data.my_reservations || []);
+        setDispatched(res.data.dispatched || []);
       } else {
         setError((res.data && res.data.message) || 'Could not load stock.');
       }
@@ -115,7 +135,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
     } finally { setBulkBusy(false); }
   };
 
-  const list = tab === 'available' ? available : reservations;
+  const list = tab === 'available' ? available : tab === 'reserved' ? reservations : dispatched;
   const reservedTab = tab === 'reserved';
   const allSelected = list.length > 0 && selected.length === list.length;
 
@@ -144,7 +164,10 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
               Available <span style={S.segCount}>{available.length}</span>
             </button>
             <button style={{ ...S.seg, ...(tab === 'reserved' ? S.segOn : {}) }} onClick={() => switchTab('reserved')}>
-              My Reservations <span style={S.segCount}>{reservations.length}</span>
+              Reserved <span style={S.segCount}>{reservations.length}</span>
+            </button>
+            <button style={{ ...S.seg, ...(tab === 'dispatched' ? S.segOn : {}) }} onClick={() => switchTab('dispatched')}>
+              Dispatched <span style={S.segCount}>{dispatched.length}</span>
             </button>
           </div>
           <button style={S.refreshBtn} onClick={load} disabled={loading || bulkBusy}>
@@ -153,7 +176,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
         </div>
 
         {/* Select-all / count row */}
-        {!loading && !error && list.length > 0 && (
+        {!loading && !error && list.length > 0 && tab !== 'dispatched' && (
           <div style={S.selRow}>
             <button
               style={S.selAll}
@@ -182,7 +205,9 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
           </div>
         ) : list.length === 0 ? (
           <div style={S.empty}>
-            {reservedTab
+            {tab === 'dispatched'
+              ? 'Nothing has been dispatched to you yet.'
+              : reservedTab
               ? 'You have no reservations yet. Reserve a unit from the Available tab.'
               : 'No units available for your company right now.'}
           </div>
@@ -191,20 +216,23 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
             {list.map((item, i) => {
               const checked = selected.includes(item.chassis_no);
               const color = colorOf(item);
+              const isDispatched = tab === 'dispatched';
               return (
                 <div
                   key={item.chassis_no || i}
-                  style={{ ...S.card, ...(checked ? S.cardChecked : {}) }}
-                  onClick={() => !bulkBusy && toggle(item.chassis_no)}
+                  style={{ ...S.card, ...(checked ? S.cardChecked : {}), ...(isDispatched ? { cursor: 'default' } : {}) }}
+                  onClick={() => { if (!bulkBusy && !isDispatched) toggle(item.chassis_no); }}
                 >
                   <div style={S.cardTop}>
-                    <span style={{ ...S.checkbox, ...(checked ? S.checkboxOn : {}) }}>{checked ? '✓' : ''}</span>
+                    {!isDispatched && (
+                      <span style={{ ...S.checkbox, ...(checked ? S.checkboxOn : {}) }}>{checked ? '✓' : ''}</span>
+                    )}
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={S.itemName}>{item.item_name || 'Item'}</div>
                       {color ? <div style={S.cardColor}>{color}</div> : null}
                     </div>
-                    <span style={{ ...S.statusPill, ...(reservedTab ? S.pillReserved : S.pillAvailable) }}>
-                      {reservedTab ? 'Reserved' : 'Available'}
+                    <span style={{ ...S.statusPill, ...(isDispatched ? S.pillDispatched : reservedTab ? S.pillReserved : S.pillAvailable) }}>
+                      {isDispatched ? 'Dispatched' : reservedTab ? 'Reserved' : 'Available'}
                     </span>
                   </div>
 
@@ -222,7 +250,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
       </div>
 
       {/* Sticky bulk action bar */}
-      {selected.length > 0 && !loading && !error && (
+      {selected.length > 0 && !loading && !error && tab !== 'dispatched' && (
         <div style={S.bulkBar}>
           <div style={S.bulkInner}>
             <span style={S.bulkCount}>{selected.length} selected</span>
@@ -248,13 +276,26 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
               <button style={S.detailClose} onClick={() => setDetailItem(null)}>✕</button>
             </div>
             <div style={S.detailName}>{detailItem.item_name || 'Item'}</div>
-            <span style={{
-              ...S.statusPill,
-              ...(detailItem.item_status === 'Reserved' ? S.pillReserved : S.pillAvailable),
-              display: 'inline-block', marginTop: '0.5rem', marginBottom: '1rem',
-            }}>
-              {detailItem.item_status || '—'}
-            </span>
+            {(() => {
+              const st = String(detailItem.item_status || '').toLowerCase();
+              const isD = st === 'dispatch' || st === 'dispatched';
+              const isR = st === 'reserved';
+              return (
+                <span style={{
+                  ...S.statusPill,
+                  ...(isD ? S.pillDispatched : isR ? S.pillReserved : S.pillAvailable),
+                  display: 'inline-block', marginTop: '0.5rem', marginBottom: '1rem',
+                }}>
+                  {detailItem.item_status || '—'}
+                </span>
+              );
+            })()}
+            {tsLabelFor(detailItem) && detailItem.last_updated_date ? (
+              <div style={{ ...S.detailRow, marginBottom: '0.4rem' }}>
+                <span style={S.detailLabel}>{tsLabelFor(detailItem)}</span>
+                <span style={S.detailValue}>{formatDateTime(detailItem.last_updated_date)}</span>
+              </div>
+            ) : null}
             <div style={S.detailList}>
               {Object.keys(detailItem.specs || {}).length === 0 ? (
                 <div style={S.detailEmpty}>No specifications recorded for this item.</div>
@@ -372,6 +413,7 @@ const S = {
   statusPill: { fontSize: '0.68rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: 99, whiteSpace: 'nowrap' },
   pillAvailable: { background: '#DCFCE7', color: '#15803D' },
   pillReserved: { background: '#FFEDD5', color: '#C2410C' },
+  pillDispatched: { background: '#DBEAFE', color: '#1D4ED8' },
 
   specWrap: { display: 'flex', flexWrap: 'wrap', gap: '0.4rem', margin: '0.9rem 0 0', paddingLeft: '1.9rem' },
   specChip: {
