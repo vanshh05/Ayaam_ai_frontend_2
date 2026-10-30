@@ -231,10 +231,10 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
                       >{allSelected ? '✓' : ''}</span>
                     </th>
                   )}
-                  <th style={S.th}>Item</th>
+                  <th style={{ ...S.th, textAlign: 'left' }}>Item</th>
                   {specCols.map((label) => <th key={label} style={S.th}>{label}</th>)}
                   {showTs && <th style={S.th}>{tsHeader}</th>}
-                  <th style={{ ...S.th, textAlign: 'right' }}>Details</th>
+                  <th style={S.th}>Details</th>
                 </tr>
               </thead>
               <tbody>
@@ -251,14 +251,14 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
                           <span style={{ ...S.checkbox, ...(checked ? S.checkboxOn : {}), display: 'inline-flex' }}>{checked ? '✓' : ''}</span>
                         </td>
                       )}
-                      <td style={{ ...S.td, fontWeight: 700, color: '#0D1B2A' }}>{item.item_name || 'Item'}</td>
+                      <td style={{ ...S.td, textAlign: 'left', fontWeight: 700, color: '#0D1B2A' }}>{item.item_name || 'Item'}</td>
                       {specCols.map((label) => (
                         <td key={label} style={S.td}>
                           {item.specs && item.specs[label] != null && String(item.specs[label]).trim() !== '' ? String(item.specs[label]) : '—'}
                         </td>
                       ))}
                       {showTs && <td style={S.td}>{formatDateTime(item.last_updated_date) || '—'}</td>}
-                      <td style={{ ...S.td, textAlign: 'right' }}>
+                      <td style={S.td}>
                         <button
                           style={{ ...S.detailsBtn, marginTop: 0 }}
                           onClick={(e) => { e.stopPropagation(); setDetailItem(item); }}
@@ -451,7 +451,7 @@ const S = {
   th: { textAlign: 'center', padding: '0.7rem 0.9rem', background: '#F1F5F9', color: '#475569', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.03em', borderBottom: '1px solid #E2E8F0' },
   tr: { borderBottom: '1px solid #F1F5F9' },
   trChecked: { background: '#F5FAFF' },
-  td: { padding: '0.6rem 0.9rem', color: '#334155', verticalAlign: 'middle' },
+  td: { padding: '0.6rem 0.9rem', color: '#334155', verticalAlign: 'middle', textAlign: 'center' },
 
   specWrap: { display: 'flex', flexWrap: 'wrap', gap: '0.4rem', margin: '0.9rem 0 0', paddingLeft: '1.9rem' },
   specChip: {
