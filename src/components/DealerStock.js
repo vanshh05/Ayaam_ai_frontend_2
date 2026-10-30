@@ -448,7 +448,7 @@ const S = {
 
   tableWrap: { overflowX: 'auto', background: '#fff', borderRadius: 14, border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04)' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', whiteSpace: 'nowrap' },
-  th: { textAlign: 'left', padding: '0.7rem 0.9rem', background: '#F1F5F9', color: '#475569', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.03em', borderBottom: '1px solid #E2E8F0' },
+  th: { textAlign: 'center', padding: '0.7rem 0.9rem', background: '#F1F5F9', color: '#475569', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.03em', borderBottom: '1px solid #E2E8F0' },
   tr: { borderBottom: '1px solid #F1F5F9' },
   trChecked: { background: '#F5FAFF' },
   td: { padding: '0.6rem 0.9rem', color: '#334155', verticalAlign: 'middle' },
