@@ -21,6 +21,13 @@ const formatDateTime = (s) => {
   return `${parseInt(m[3], 10)} ${MONTHS[parseInt(m[2], 10) - 1]} ${m[1]}, ${h}:${m[5]} ${ap}`;
 };
 
+// Search filter: match item name + every spec value (case-insensitive substring).
+const matchesQuery = (item, q) => {
+  if (!q) return true;
+  const hay = [item.item_name || '', ...Object.values(item.specs || {})].join(' ').toLowerCase();
+  return hay.includes(q);
+};
+
 /**
  * Dealer portal (web) — plain REST, no AI. Full parity with the mobile
  * DealerStockScreen: the Available pool for the dealer's company plus the
@@ -45,6 +52,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
   const [selected, setSelected] = useState([]);    // chassis_no[] in the current tab
   const [toast, setToast]       = useState(null);  // { ok, text }
   const [detailItem, setDetailItem] = useState(null); // item whose details modal is open
+  const [query, setQuery]       = useState('');       // search text (filters the current tab)
 
   const authHeader = { headers: { Authorization: `Bearer ${user.token}` } };
   const isAuthErr = (e) => e && e.response && (e.response.status === 401 || e.response.status === 403);
@@ -92,7 +100,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const switchTab = (t) => { setTab(t); clearSelection(); };
+  const switchTab = (t) => { setTab(t); clearSelection(); setQuery(''); };
 
   const toggle = (chassis) =>
     setSelected(prev => (prev.includes(chassis) ? prev.filter(x => x !== chassis) : [...prev, chassis]));
@@ -130,12 +138,14 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
 
   const list = tab === 'available' ? available : tab === 'reserved' ? reservations : dispatched;
   const reservedTab = tab === 'reserved';
-  const allSelected = list.length > 0 && selected.length === list.length;
+  const q = query.trim().toLowerCase();
+  const shown = q ? list.filter((it) => matchesQuery(it, q)) : list;
+  const allSelected = shown.length > 0 && shown.every((it) => selected.includes(it.chassis_no));
   const selectable = tab !== 'dispatched';
   const showTs = tab === 'reserved' || tab === 'dispatched';
   const tsHeader = tab === 'dispatched' ? 'Dispatched on' : 'Reserved on';
-  // Table columns: every populated spec label across the current list, excluding chassis
-  // (chassis stays hidden on the dashboard; it's shown in the View details modal).
+  // Table columns: every populated spec label across the full tab (stable while searching),
+  // excluding chassis (chassis stays hidden on the dashboard; shown in the View details modal).
   const specCols = [];
   list.forEach((it) => {
     Object.keys(it.specs || {}).forEach((label) => {
@@ -174,6 +184,12 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
               Dispatched <span style={S.segCount}>{dispatched.length}</span>
             </button>
           </div>
+          <input
+            style={S.search}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${tab === 'reserved' ? 'reservations' : tab}…`}
+          />
           <button style={S.refreshBtn} onClick={load} disabled={loading || bulkBusy}>
             {loading ? 'Refreshing…' : '↻ Refresh'}
           </button>
@@ -200,6 +216,8 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
               ? 'You have no reservations yet. Reserve a unit from the Available tab.'
               : 'No units available for your company right now.'}
           </div>
+        ) : shown.length === 0 ? (
+          <div style={S.empty}>No items match your search.</div>
         ) : (
           <div style={S.tableWrap}>
             <table style={S.table}>
@@ -209,7 +227,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
                     <th style={{ ...S.th, width: 36, textAlign: 'center' }}>
                       <span
                         style={{ ...S.checkbox, ...(allSelected ? S.checkboxOn : {}), display: 'inline-flex', cursor: 'pointer' }}
-                        onClick={() => (allSelected ? clearSelection() : setSelected(list.map(i => i.chassis_no)))}
+                        onClick={() => (allSelected ? clearSelection() : setSelected(shown.map(i => i.chassis_no)))}
                       >{allSelected ? '✓' : ''}</span>
                     </th>
                   )}
@@ -220,7 +238,7 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
                 </tr>
               </thead>
               <tbody>
-                {list.map((item, i) => {
+                {shown.map((item, i) => {
                   const checked = selected.includes(item.chassis_no);
                   return (
                     <tr
@@ -348,7 +366,7 @@ const S = {
     fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit',
   },
 
-  body: { maxWidth: 1100, margin: '0 auto', padding: '1.5rem' },
+  body: { maxWidth: 'none', margin: 0, padding: '1.25rem 1.5rem' },
 
   controls: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -369,6 +387,11 @@ const S = {
     background: '#fff', border: '1px solid #CBD5E1', color: '#1565C0',
     padding: '0.55rem 1.1rem', borderRadius: 9, fontSize: '0.84rem', fontWeight: 700,
     cursor: 'pointer', fontFamily: 'inherit',
+  },
+  search: {
+    flex: '1 1 220px', minWidth: 180, maxWidth: 420,
+    padding: '0.55rem 0.9rem', border: '1px solid #CBD5E1', borderRadius: 9,
+    fontSize: '0.86rem', fontFamily: 'inherit', color: '#0D1B2A', background: '#fff', outline: 'none',
   },
 
   selRow: { display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' },
@@ -451,7 +474,7 @@ const S = {
     background: '#fff', borderTop: '1px solid #E2E8F0', boxShadow: '0 -4px 24px rgba(0,0,0,0.08)',
   },
   bulkInner: {
-    maxWidth: 1100, margin: '0 auto', padding: '0.9rem 1.5rem',
+    maxWidth: 'none', margin: 0, padding: '0.9rem 1.5rem',
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
   },
   bulkCount: { fontSize: '0.9rem', fontWeight: 700, color: '#0D1B2A' },
