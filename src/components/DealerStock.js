@@ -53,6 +53,8 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
   const [toast, setToast]       = useState(null);  // { ok, text }
   const [detailItem, setDetailItem] = useState(null); // item whose details modal is open
   const [query, setQuery]       = useState('');       // search text (filters the current tab)
+  const [notifs, setNotifs]     = useState([]);       // open cancellation notifications
+  const [notifsOpen, setNotifsOpen] = useState(false);
 
   const authHeader = { headers: { Authorization: `Bearer ${user.token}` } };
   const isAuthErr = (e) => e && e.response && (e.response.status === 401 || e.response.status === 403);
@@ -99,6 +101,26 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
   }, [user.token]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Cancellation notifications — fetched on login; OK dismisses + acks them.
+  const fetchNotifs = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/dealer/notifications`, authHeader);
+      if (res.data && res.data.success) {
+        const items = res.data.notifications || [];
+        setNotifs(items);
+        if (items.length > 0) setNotifsOpen(true);
+      }
+    } catch (e) { /* notifications are non-critical */ }
+  }, [user.token]);
+
+  useEffect(() => { fetchNotifs(); }, [fetchNotifs]);
+
+  const dismissNotifs = async () => {
+    setNotifsOpen(false);
+    setNotifs([]);
+    try { await axios.post(`${API_URL}/api/dealer/notifications/ack`, {}, authHeader); } catch (e) { /* ignore */ }
+  };
 
   const switchTab = (t) => { setTab(t); clearSelection(); setQuery(''); };
 
@@ -165,6 +187,11 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
           </div>
         </div>
         <div style={S.headerRight}>
+          {notifs.length > 0 && (
+            <button style={S.bellBtn} onClick={() => setNotifsOpen(true)} title="Notifications">
+              🔔<span style={S.bellBadge}>{notifs.length}</span>
+            </button>
+          )}
           <span style={S.signedIn}>{user.name || user.username}</span>
           <button style={S.logoutBtn} onClick={onLogout}>Sign out</button>
         </div>
@@ -334,6 +361,31 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {notifsOpen && notifs.length > 0 && (
+        <div style={S.detailOverlay} onClick={dismissNotifs}>
+          <div style={S.notifModal} onClick={(e) => e.stopPropagation()}>
+            <div style={S.detailHead}>
+              <span style={S.detailHeadTitle}>Reservation{notifs.length > 1 ? 's' : ''} cancelled</span>
+            </div>
+            <div style={S.notifList}>
+              {notifs.map((n, i) => {
+                const label = (n.item_name || `Chassis ${n.chassis_no}`) + (n.color ? ` (${n.color})` : '');
+                return (
+                  <div key={i} style={S.notifItem}>
+                    <div style={S.notifTitle}>{label}</div>
+                    <div style={S.notifMeta}>
+                      Cancelled by {n.cancelled_by || 'the company'}{n.created_date ? ` · ${formatDateTime(n.created_date)}` : ''}
+                    </div>
+                    {n.remarks ? <div style={S.notifRemark}>Reason: {n.remarks}</div> : null}
+                  </div>
+                );
+              })}
+            </div>
+            <button style={S.notifOk} onClick={dismissNotifs}>OK</button>
           </div>
         </div>
       )}
@@ -513,4 +565,14 @@ const S = {
   },
   detailLabel: { fontSize: '0.82rem', fontWeight: 600, color: '#64748B' },
   detailValue: { fontSize: '0.84rem', fontWeight: 700, color: '#0D1B2A', textAlign: 'right' },
+
+  bellBtn: { position: 'relative', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '0.4rem 0.6rem', borderRadius: 8, cursor: 'pointer', fontSize: '0.95rem' },
+  bellBadge: { position: 'absolute', top: -6, right: -6, background: '#DC2626', color: '#fff', borderRadius: 99, fontSize: '0.62rem', fontWeight: 800, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' },
+  notifModal: { background: '#fff', borderRadius: 14, padding: '1.5rem', width: '100%', maxWidth: 460, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.3)' },
+  notifList: { margin: '0.4rem 0 1.1rem' },
+  notifItem: { padding: '0.8rem 0', borderBottom: '1px solid #F1F5F9' },
+  notifTitle: { fontSize: '0.95rem', fontWeight: 800, color: '#0D1B2A' },
+  notifMeta: { fontSize: '0.8rem', color: '#64748B', marginTop: 3 },
+  notifRemark: { fontSize: '0.84rem', color: '#B45309', marginTop: 6, background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '0.45rem 0.65rem' },
+  notifOk: { width: '100%', border: 'none', borderRadius: 10, padding: '0.7rem', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', background: 'linear-gradient(135deg,#1565C0,#2196F3)', color: '#fff' },
 };
