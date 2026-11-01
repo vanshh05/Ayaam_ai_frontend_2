@@ -114,7 +114,11 @@ export default function DealerStock({ user, onLogout, onAuthError }) {
     } catch (e) { /* notifications are non-critical */ }
   }, [user.token]);
 
-  useEffect(() => { fetchNotifs(); }, [fetchNotifs]);
+  useEffect(() => {
+    fetchNotifs();
+    const id = setInterval(fetchNotifs, 30000); // auto-refresh so new cancellations appear without a reload
+    return () => clearInterval(id);
+  }, [fetchNotifs]);
 
   const dismissNotifs = async () => {
     setNotifsOpen(false);
